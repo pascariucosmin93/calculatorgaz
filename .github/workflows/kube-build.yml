@@ -37,6 +37,24 @@ jobs:
           echo "No package manager (apt/apk) available to install docker CLI." >&2
           exit 1
 
+      - name: Ensure Node is available for JS actions
+        run: |
+          if command -v node >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y nodejs npm
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add nodejs npm
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install node." >&2
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@v4
 
