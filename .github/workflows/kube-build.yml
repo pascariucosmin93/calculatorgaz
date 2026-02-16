@@ -3,7 +3,7 @@ name: Build & Push (kube)
 on:
   push:
     branches:
-      - kube
+      - main
   workflow_dispatch:
 
 permissions:
