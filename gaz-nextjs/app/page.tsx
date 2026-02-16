@@ -26,7 +26,7 @@ const THEME_STORAGE_KEY = "gaz-calculator:theme";
 const METER_SERIAL = "00838754/2013";
 const NAV_ITEMS = ["Acasă", "Autocitire", "Facturi", "Consum", "Myline"];
 const DEFAULT_ADDRESS = "Adresa locului de consum nu este configurată pentru acest cont.";
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "adim@gmail.com";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "admin@gmail.com";
 
 const getSettingsStorageKey = (userId: string) => `gaz-calculator:last-reading:v2:${userId}`;
 

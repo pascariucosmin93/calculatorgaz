@@ -58,11 +58,11 @@ spec:
             - name: DATABASE_URL
               value: postgresql://devops:devops@postgres.postgress.svc.cluster.local:5432/gaz
             - name: ADMIN_EMAIL
-              value: adim@gmail.com
+              value: admin@gmail.com
             - name: ADMIN_PASSWORD
               value: admin
             - name: NEXT_PUBLIC_ADMIN_EMAIL
-              value: adim@gmail.com
+              value: admin@gmail.com
           readinessProbe:
             httpGet:
               path: /api/health
