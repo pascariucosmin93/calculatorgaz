@@ -78,10 +78,10 @@ jobs:
       - name: Scan image for vulnerabilities (Trivy)
         run: |
           IMAGE_REF="$REGISTRY/$IMAGE_NAME"
-          docker pull docker.io/aquasecurity/trivy:0.56.2
+          docker pull docker.io/aquasec/trivy:0.56.2
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            docker.io/aquasecurity/trivy:0.56.2 \
+            docker.io/aquasec/trivy:0.56.2 \
             image \
             --scanners vuln \
             --severity CRITICAL \
