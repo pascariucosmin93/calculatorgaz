@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AuthStatusCard } from "./components/AuthStatusCard";
+import { ProfileForm } from "./components/ProfileForm";
 import { ReadingSection } from "./components/ReadingSection";
 import { SettingsForm } from "./components/SettingsForm";
 import { ResultSection } from "./components/ResultSection";
@@ -74,6 +75,11 @@ export default function Home() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [profileOwnerName, setProfileOwnerName] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus>("idle");
   const latestEntry = useMemo(() => {
@@ -152,6 +158,20 @@ export default function Home() {
       localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setProfileOwnerName("");
+      setProfileAddress("");
+      setProfileError("");
+      setProfileSuccess("");
+      return;
+    }
+    setProfileOwnerName(user.ownerName ?? "");
+    setProfileAddress(user.address ?? "");
+    setProfileError("");
+    setProfileSuccess("");
+  }, [user?.id]);
 
   useEffect(() => {
     fetchHistory().catch(() => setHistoryStatus("error"));
@@ -308,6 +328,68 @@ export default function Home() {
   const handleLogout = useCallback(() => {
     setUser(null);
   }, []);
+
+  const handleProfileSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!user?.id) {
+        setProfileError("Trebuie să fii autentificat pentru a salva datele.");
+        return;
+      }
+
+      setProfileSaving(true);
+      setProfileError("");
+      setProfileSuccess("");
+
+      try {
+        const response = await fetch("/api/auth/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            ownerName: profileOwnerName,
+            address: profileAddress
+          })
+        });
+
+        let data: any = null;
+        try {
+          const text = await response.text();
+          if (text) {
+            data = JSON.parse(text);
+          }
+        } catch {
+          data = null;
+        }
+
+        if (!response.ok) {
+          const errMsg = (data && data.error) || "Nu am putut salva datele.";
+          throw new Error(errMsg);
+        }
+
+        if (!data) {
+          throw new Error("Răspuns invalid de la server.");
+        }
+
+        setUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                ownerName: data.ownerName ?? null,
+                address: data.address ?? null
+              }
+            : prev
+        );
+        setProfileSuccess("Datele au fost salvate.");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Nu am putut salva datele.";
+        setProfileError(message);
+      } finally {
+        setProfileSaving(false);
+      }
+    },
+    [profileAddress, profileOwnerName, user?.id]
+  );
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -657,6 +739,18 @@ export default function Home() {
           onResetPasswordSubmit={handleResetPasswordSubmit}
           onLogout={handleLogout}
         />
+        {user && (
+          <ProfileForm
+            ownerName={profileOwnerName}
+            address={profileAddress}
+            isSaving={profileSaving}
+            error={profileError}
+            success={profileSuccess}
+            onOwnerNameChange={setProfileOwnerName}
+            onAddressChange={setProfileAddress}
+            onSubmit={handleProfileSubmit}
+          />
+        )}
         {user ? (
           <>
             <form style={styles.card} onSubmit={handleSubmit}>
