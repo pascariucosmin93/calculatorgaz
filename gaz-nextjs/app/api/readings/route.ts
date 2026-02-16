@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 type Payload = {
+  userId: string;
   previousReading: number;
   currentReading: number;
   pcs: number;
@@ -18,8 +19,14 @@ type Payload = {
 const isNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
-export async function GET() {
+export async function GET(request: Request) {
+  const userId = new URL(request.url).searchParams.get("userId")?.trim() ?? "";
+  if (!userId) {
+    return NextResponse.json({ error: "Lipsește utilizatorul." }, { status: 401 });
+  }
+
   const readings = await prisma.reading.findMany({
+    where: { userId },
     orderBy: { createdAt: "desc" },
     take: 20
   });
@@ -36,6 +43,7 @@ export async function POST(request: Request) {
   }
 
   const {
+    userId,
     previousReading,
     currentReading,
     pcs,
@@ -48,6 +56,18 @@ export async function POST(request: Request) {
     vatRate,
     includeVat
   } = payload;
+
+  if (typeof userId !== "string" || !userId.trim()) {
+    return NextResponse.json({ error: "Lipsește utilizatorul." }, { status: 401 });
+  }
+
+  const owner = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true }
+  });
+  if (!owner) {
+    return NextResponse.json({ error: "Utilizator invalid." }, { status: 401 });
+  }
 
   if (
     ![
@@ -131,7 +151,8 @@ export async function POST(request: Request) {
       includeVat,
       subtotal,
       vat,
-      total
+      total,
+      userId
     }
   });
 

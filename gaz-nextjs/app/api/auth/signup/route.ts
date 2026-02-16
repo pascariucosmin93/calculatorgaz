@@ -62,12 +62,15 @@ export async function POST(request: Request) {
       data: {
         username: username.toLowerCase(),
         email,
+        ownerName: username.toUpperCase(),
         passwordHash
       },
       select: {
         id: true,
         username: true,
         email: true,
+        ownerName: true,
+        address: true,
         createdAt: true
       }
     });

@@ -21,15 +21,22 @@ model Reading {
   subtotal         Float
   vat              Float
   total            Float
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId           String?
   createdAt        DateTime @default(now())
+
+  @@index([userId])
 }
 
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
   email        String?  @unique
+  ownerName    String?
+  address      String?
   passwordHash String
   createdAt    DateTime @default(now())
+  readings     Reading[]
   resetTokens  PasswordResetToken[]
 }
 

@@ -19,18 +19,13 @@ const DEFAULT_CAP26_PRICE_MWH = -20.54;
 const DEFAULT_CAP6_PRICE_MWH = -0.063;
 const DEFAULT_FIXED_FEE = 0;
 const DEFAULT_VAT_RATE = 0.21;
-const STORAGE_KEY = "gaz-calculator:last-reading:v2";
 const AUTH_STORAGE_KEY = "gaz-calculator:auth-user";
 const THEME_STORAGE_KEY = "gaz-calculator:theme";
-
-const SUPPLY_POINT = {
-  label: "GAZE NATURALE",
-  address:
-    "Strada Bazei, Nr. 2.1A, Bloc/Scară T.64, corp C2, Ap. 20, Localitate Valea Adanca(IS), Județ Iași",
-  owner: "PASCARIU COSMIN ALEXANDRU"
-};
 const METER_SERIAL = "00838754/2013";
 const NAV_ITEMS = ["Acasă", "Autocitire", "Facturi", "Consum", "Myline"];
+const DEFAULT_ADDRESS = "Adresa locului de consum nu este configurată pentru acest cont.";
+
+const getSettingsStorageKey = (userId: string) => `gaz-calculator:last-reading:v2:${userId}`;
 
 const CHART_THEME: Record<ThemeMode, ChartTheme> = {
   light: {
@@ -108,9 +103,15 @@ export default function Home() {
     : null;
 
   const fetchHistory = useCallback(async () => {
+    if (!user?.id) {
+      setHistory([]);
+      setHistoryStatus("idle");
+      return;
+    }
+
     setHistoryStatus("loading");
     try {
-      const res = await fetch("/api/readings");
+      const res = await fetch(`/api/readings?userId=${encodeURIComponent(user.id)}`);
       if (!res.ok) {
         throw new Error("Nu am putut încărca istoricul.");
       }
@@ -121,43 +122,7 @@ export default function Home() {
       console.error(err);
       setHistoryStatus("error");
     }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) {
-        return;
-      }
-      const parsed = JSON.parse(saved) as {
-        previousReading?: string;
-        pcs?: string;
-        gasPriceMwh?: string;
-        transportPriceMwh?: string;
-        distributionPriceMwh?: string;
-        cap26PriceMwh?: string;
-        cap6PriceMwh?: string;
-        vatRate?: string;
-        fee?: string;
-      };
-      setPreviousReading(parsed.previousReading ?? "");
-      setPcs(parsed.pcs ?? DEFAULT_PCS.toString());
-      setGasPriceMwh(parsed.gasPriceMwh ?? DEFAULT_GAS_PRICE_MWH.toString());
-      setTransportPriceMwh(parsed.transportPriceMwh ?? DEFAULT_TRANSPORT_PRICE_MWH.toString());
-      setDistributionPriceMwh(
-        parsed.distributionPriceMwh ?? DEFAULT_DISTRIBUTION_PRICE_MWH.toString()
-      );
-      setCap26PriceMwh(parsed.cap26PriceMwh ?? DEFAULT_CAP26_PRICE_MWH.toString());
-      setCap6PriceMwh(parsed.cap6PriceMwh ?? DEFAULT_CAP6_PRICE_MWH.toString());
-      setVatRate(parsed.vatRate ?? (DEFAULT_VAT_RATE * 100).toString());
-      setFixedFee(parsed.fee ?? DEFAULT_FIXED_FEE.toString());
-    } catch {
-      // Ignorăm datele salvate corupte.
-    }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -191,6 +156,56 @@ export default function Home() {
   useEffect(() => {
     fetchHistory().catch(() => setHistoryStatus("error"));
   }, [fetchHistory]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (!user?.id) {
+      setPreviousReading("");
+      setPcs(DEFAULT_PCS.toString());
+      setGasPriceMwh(DEFAULT_GAS_PRICE_MWH.toString());
+      setTransportPriceMwh(DEFAULT_TRANSPORT_PRICE_MWH.toString());
+      setDistributionPriceMwh(DEFAULT_DISTRIBUTION_PRICE_MWH.toString());
+      setCap26PriceMwh(DEFAULT_CAP26_PRICE_MWH.toString());
+      setCap6PriceMwh(DEFAULT_CAP6_PRICE_MWH.toString());
+      setVatRate((DEFAULT_VAT_RATE * 100).toString());
+      setFixedFee(DEFAULT_FIXED_FEE.toString());
+      return;
+    }
+
+    const storageKey = getSettingsStorageKey(user.id);
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) {
+        return;
+      }
+      const parsed = JSON.parse(saved) as {
+        previousReading?: string;
+        pcs?: string;
+        gasPriceMwh?: string;
+        transportPriceMwh?: string;
+        distributionPriceMwh?: string;
+        cap26PriceMwh?: string;
+        cap6PriceMwh?: string;
+        vatRate?: string;
+        fee?: string;
+      };
+      setPreviousReading(parsed.previousReading ?? "");
+      setPcs(parsed.pcs ?? DEFAULT_PCS.toString());
+      setGasPriceMwh(parsed.gasPriceMwh ?? DEFAULT_GAS_PRICE_MWH.toString());
+      setTransportPriceMwh(parsed.transportPriceMwh ?? DEFAULT_TRANSPORT_PRICE_MWH.toString());
+      setDistributionPriceMwh(
+        parsed.distributionPriceMwh ?? DEFAULT_DISTRIBUTION_PRICE_MWH.toString()
+      );
+      setCap26PriceMwh(parsed.cap26PriceMwh ?? DEFAULT_CAP26_PRICE_MWH.toString());
+      setCap6PriceMwh(parsed.cap6PriceMwh ?? DEFAULT_CAP6_PRICE_MWH.toString());
+      setVatRate(parsed.vatRate ?? (DEFAULT_VAT_RATE * 100).toString());
+      setFixedFee(parsed.fee ?? DEFAULT_FIXED_FEE.toString());
+    } catch {
+      // Ignorăm datele salvate corupte.
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -271,6 +286,8 @@ export default function Home() {
           id: data.id,
           username: data.username,
           email: data.email ?? null,
+          ownerName: data.ownerName ?? null,
+          address: data.address ?? null,
           createdAt: data.createdAt
         };
 
@@ -367,6 +384,7 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            userId: user.id,
             previousReading: previous,
             currentReading: current,
             pcs: pcsValue,
@@ -452,7 +470,7 @@ export default function Home() {
             vatRate,
             fee: fixedFee
           };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+          localStorage.setItem(getSettingsStorageKey(user.id), JSON.stringify(payload));
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Eroare la salvarea calculului.";
@@ -605,6 +623,14 @@ export default function Home() {
   }, [currentReading, pcs, previousReading]);
 
   const chartTheme = CHART_THEME[theme];
+  const supplyPoint = useMemo(
+    () => ({
+      label: "GAZE NATURALE",
+      address: user?.address?.trim() || DEFAULT_ADDRESS,
+      owner: user?.ownerName?.trim() || user?.username?.toUpperCase() || "Titular necunoscut"
+    }),
+    [user]
+  );
 
   return (
     <main style={styles.page}>
@@ -657,7 +683,7 @@ export default function Home() {
                 </div>
               </div>
               <ReadingSection
-                supplyPoint={SUPPLY_POINT}
+                supplyPoint={supplyPoint}
                 meterSerial={METER_SERIAL}
                 lastBilledValue={lastBilledValue}
                 lastReportedValue={lastReportedValue}

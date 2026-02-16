@@ -57,5 +57,7 @@ export type AuthUser = {
   id: string;
   username: string;
   email: string | null;
+  ownerName: string | null;
+  address: string | null;
   createdAt: string;
 };
