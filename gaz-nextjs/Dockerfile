@@ -8,6 +8,8 @@ RUN apt-get update \
 COPY package*.json ./
 COPY prisma ./prisma
 RUN npm install --prefer-offline --no-audit --progress=false
+# Patch Next.js CVE during image build (CI) regardless of repo lockfile.
+RUN npm install next@14.2.25 eslint-config-next@14.2.25 --no-audit --progress=false
 
 # Etapa de build
 FROM node:20-bookworm-slim AS builder

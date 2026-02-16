@@ -1,0 +1,465 @@
+0 verbose cli /usr/local/bin/node /usr/local/bin/npm
+1 info using npm@11.6.2
+2 info using node@v24.13.0
+3 silly config load:file:/usr/local/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/.npmrc
+5 silly config load:file:/Users/cosmin.pascariu/.npmrc
+6 silly config load:file:/usr/local/etc/npmrc
+7 verbose title npm install next@14.2.25 eslint-config-next@14.2.25
+8 verbose argv "install" "next@14.2.25" "eslint-config-next@14.2.25"
+9 verbose logfile logs-max:10 dir:/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/.npm-cache/_logs/2026-02-16T11_55_16_946Z-
+10 verbose logfile /Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/.npm-cache/_logs/2026-02-16T11_55_16_946Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly fetch manifest next@14.2.25
+15 silly packumentCache full:https://registry.npmjs.org/next cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/npm 469ms
+17 http fetch GET 200 https://registry.npmjs.org/next 724ms (cache miss)
+18 silly packumentCache full:https://registry.npmjs.org/next set size:undefined disposed:false
+19 silly fetch manifest @opentelemetry/api@^1.1.0
+20 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fapi cache-miss
+21 http fetch GET 200 https://registry.npmjs.org/@opentelemetry%2fapi 59ms (cache miss)
+22 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fapi set size:undefined disposed:false
+23 silly fetch manifest @playwright/test@^1.41.2
+24 silly packumentCache full:https://registry.npmjs.org/@playwright%2ftest cache-miss
+25 http fetch GET 200 https://registry.npmjs.org/@playwright%2ftest 252ms (cache miss)
+26 silly packumentCache full:https://registry.npmjs.org/@playwright%2ftest set size:undefined disposed:false
+27 silly fetch manifest react@18.2.0
+28 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+29 http fetch GET 200 https://registry.npmjs.org/react 254ms (cache miss)
+30 silly packumentCache full:https://registry.npmjs.org/react set size:undefined disposed:false
+31 silly fetch manifest react-dom@18.2.0
+32 silly packumentCache full:https://registry.npmjs.org/react-dom cache-miss
+33 http fetch GET 200 https://registry.npmjs.org/react-dom 409ms (cache miss)
+34 silly packumentCache full:https://registry.npmjs.org/react-dom set size:undefined disposed:false
+35 silly fetch manifest sass@^1.3.0
+36 silly packumentCache full:https://registry.npmjs.org/sass cache-miss
+37 http fetch GET 200 https://registry.npmjs.org/sass 135ms (cache miss)
+38 silly packumentCache full:https://registry.npmjs.org/sass set size:undefined disposed:false
+39 silly fetch manifest eslint-config-next@14.2.25
+40 silly packumentCache full:https://registry.npmjs.org/eslint-config-next cache-miss
+41 http fetch GET 200 https://registry.npmjs.org/eslint-config-next 209ms (cache miss)
+42 silly packumentCache full:https://registry.npmjs.org/eslint-config-next set size:undefined disposed:false
+43 silly fetch manifest eslint@8.57.0
+44 silly packumentCache full:https://registry.npmjs.org/eslint cache-miss
+45 http fetch GET 200 https://registry.npmjs.org/eslint 139ms (cache miss)
+46 silly packumentCache full:https://registry.npmjs.org/eslint set size:undefined disposed:false
+47 silly fetch manifest typescript@5.4.5
+48 silly packumentCache full:https://registry.npmjs.org/typescript cache-miss
+49 http fetch GET 200 https://registry.npmjs.org/typescript 376ms (cache miss)
+50 silly packumentCache full:https://registry.npmjs.org/typescript set size:undefined disposed:false
+51 silly placeDep ROOT eslint-config-next@14.2.25 REPLACE for: gaz-nextjs@1.0.0 want: 14.2.25
+52 silly placeDep ROOT next@14.2.25 REPLACE for: gaz-nextjs@1.0.0 want: 14.2.25
+53 silly fetch manifest @next/eslint-plugin-next@14.2.25
+54 silly packumentCache full:https://registry.npmjs.org/@next%2feslint-plugin-next cache-miss
+55 silly fetch manifest @typescript-eslint/eslint-plugin@^5.4.2 || ^6.0.0 || ^7.0.0 || ^8.0.0
+56 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2feslint-plugin cache-miss
+57 silly fetch manifest @next/env@14.2.25
+58 silly packumentCache full:https://registry.npmjs.org/@next%2fenv cache-miss
+59 http fetch GET 200 https://registry.npmjs.org/@next%2feslint-plugin-next 382ms (cache miss)
+60 silly packumentCache full:https://registry.npmjs.org/@next%2feslint-plugin-next set size:undefined disposed:false
+61 silly fetch manifest @next/swc-darwin-x64@14.2.25
+62 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-darwin-x64 cache-miss
+63 http fetch GET 200 https://registry.npmjs.org/@next%2fenv 435ms (cache miss)
+64 silly packumentCache full:https://registry.npmjs.org/@next%2fenv set size:undefined disposed:false
+65 silly fetch manifest @next/swc-darwin-arm64@14.2.25
+66 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-darwin-arm64 cache-miss
+67 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-darwin-x64 347ms (cache miss)
+68 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-darwin-x64 set size:undefined disposed:false
+69 silly fetch manifest @next/swc-linux-x64-gnu@14.2.25
+70 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-linux-x64-gnu cache-miss
+71 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2feslint-plugin 945ms (cache miss)
+72 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2feslint-plugin set size:undefined disposed:false
+73 silly fetch manifest @next/swc-linux-x64-musl@14.2.25
+74 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-linux-x64-musl cache-miss
+75 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-darwin-arm64 616ms (cache miss)
+76 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-darwin-arm64 set size:undefined disposed:false
+77 silly fetch manifest @next/swc-win32-x64-msvc@14.2.25
+78 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-win32-x64-msvc cache-miss
+79 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-linux-x64-gnu 365ms (cache miss)
+80 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-linux-x64-gnu set size:undefined disposed:false
+81 silly fetch manifest @next/swc-linux-arm64-gnu@14.2.25
+82 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-linux-arm64-gnu cache-miss
+83 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-linux-x64-musl 385ms (cache miss)
+84 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-linux-x64-musl set size:undefined disposed:false
+85 silly fetch manifest @next/swc-win32-ia32-msvc@14.2.25
+86 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-win32-ia32-msvc cache-miss
+87 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-linux-arm64-gnu 360ms (cache miss)
+88 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-linux-arm64-gnu set size:undefined disposed:false
+89 silly fetch manifest @next/swc-linux-arm64-musl@14.2.25
+90 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-linux-arm64-musl cache-miss
+91 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-win32-x64-msvc 476ms (cache miss)
+92 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-win32-x64-msvc set size:undefined disposed:false
+93 silly fetch manifest @next/swc-win32-arm64-msvc@14.2.25
+94 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-win32-arm64-msvc cache-miss
+95 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-win32-ia32-msvc 463ms (cache miss)
+96 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-win32-ia32-msvc set size:undefined disposed:false
+97 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-linux-arm64-musl 727ms (cache miss)
+98 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-linux-arm64-musl set size:undefined disposed:false
+99 http fetch GET 200 https://registry.npmjs.org/@next%2fswc-win32-arm64-msvc 725ms (cache miss)
+100 silly packumentCache full:https://registry.npmjs.org/@next%2fswc-win32-arm64-msvc set size:undefined disposed:false
+101 silly fetch manifest @typescript-eslint/parser@^5.4.2 || ^6.0.0 || ^7.0.0 || ^8.0.0
+102 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2fparser cache-miss
+103 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2fparser 443ms (cache miss)
+104 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2fparser set size:undefined disposed:false
+105 silly fetch manifest eslint@^7.23.0 || ^8.0.0
+106 silly packumentCache full:https://registry.npmjs.org/eslint cache-miss
+107 http cache https://registry.npmjs.org/eslint 33ms (cache hit)
+108 silly packumentCache full:https://registry.npmjs.org/eslint set size:1929113 disposed:false
+109 silly fetch manifest typescript@>=3.3.1
+110 silly packumentCache full:https://registry.npmjs.org/typescript cache-miss
+111 http cache https://registry.npmjs.org/typescript 34ms (cache hit)
+112 silly packumentCache full:https://registry.npmjs.org/typescript set size:15253842 disposed:false
+113 silly placeDep ROOT @next/eslint-plugin-next@14.2.25 OK for: eslint-config-next@14.2.25 want: 14.2.25
+114 silly placeDep ROOT @typescript-eslint/eslint-plugin@8.55.0 OK for: eslint-config-next@14.2.25 want: ^5.4.2 || ^6.0.0 || ^7.0.0 || ^8.0.0
+115 silly placeDep ROOT @typescript-eslint/parser@8.55.0 REPLACE for: @typescript-eslint/eslint-plugin@8.55.0 want: ^8.55.0
+116 silly fetch manifest glob@10.3.10
+117 silly packumentCache full:https://registry.npmjs.org/glob cache-miss
+118 silly fetch manifest ignore@^7.0.5
+119 silly packumentCache full:https://registry.npmjs.org/ignore cache-miss
+120 silly fetch manifest ts-api-utils@^2.4.0
+121 silly packumentCache full:https://registry.npmjs.org/ts-api-utils cache-miss
+122 http fetch GET 200 https://registry.npmjs.org/ignore 139ms (cache miss)
+123 silly packumentCache full:https://registry.npmjs.org/ignore set size:undefined disposed:false
+124 silly fetch manifest @typescript-eslint/utils@8.55.0
+125 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2futils cache-miss
+126 http fetch GET 200 https://registry.npmjs.org/ts-api-utils 150ms (cache miss)
+127 silly packumentCache full:https://registry.npmjs.org/ts-api-utils set size:undefined disposed:false
+128 silly fetch manifest @typescript-eslint/type-utils@8.55.0
+129 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftype-utils cache-miss
+130 http fetch GET 200 https://registry.npmjs.org/glob 156ms (cache miss)
+131 silly packumentCache full:https://registry.npmjs.org/glob set size:undefined disposed:false
+132 silly fetch manifest @typescript-eslint/visitor-keys@8.55.0
+133 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2fvisitor-keys cache-miss
+134 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2futils 287ms (cache miss)
+135 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2futils set size:undefined disposed:false
+136 silly fetch manifest @typescript-eslint/scope-manager@8.55.0
+137 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2fscope-manager cache-miss
+138 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2fvisitor-keys 344ms (cache miss)
+139 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2fvisitor-keys set size:undefined disposed:false
+140 silly fetch manifest @typescript-eslint/types@8.55.0
+141 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftypes cache-miss
+142 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2fscope-manager 506ms (cache miss)
+143 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2fscope-manager set size:undefined disposed:false
+144 silly fetch manifest @typescript-eslint/typescript-estree@8.55.0
+145 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftypescript-estree cache-miss
+146 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2ftype-utils 983ms (cache miss)
+147 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftype-utils set size:undefined disposed:false
+148 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2ftypes 671ms (cache miss)
+149 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftypes set size:undefined disposed:false
+150 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2ftypescript-estree 395ms (cache miss)
+151 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftypescript-estree set size:undefined disposed:false
+152 silly placeDep ROOT glob@10.3.10 OK for: @next/eslint-plugin-next@14.2.25 want: 10.3.10
+153 silly fetch manifest minipass@^5.0.0 || ^6.0.2 || ^7.0.0
+154 silly packumentCache full:https://registry.npmjs.org/minipass cache-miss
+155 silly fetch manifest jackspeak@^2.3.5
+156 silly packumentCache full:https://registry.npmjs.org/jackspeak cache-miss
+157 silly fetch manifest minimatch@^9.0.1
+158 silly packumentCache full:https://registry.npmjs.org/minimatch cache-miss
+159 http fetch GET 200 https://registry.npmjs.org/jackspeak 200ms (cache miss)
+160 silly packumentCache full:https://registry.npmjs.org/jackspeak set size:undefined disposed:false
+161 silly fetch manifest path-scurry@^1.10.1
+162 silly packumentCache full:https://registry.npmjs.org/path-scurry cache-miss
+163 http fetch GET 200 https://registry.npmjs.org/minimatch 211ms (cache miss)
+164 silly packumentCache full:https://registry.npmjs.org/minimatch set size:undefined disposed:false
+165 silly fetch manifest foreground-child@^3.1.0
+166 silly packumentCache full:https://registry.npmjs.org/foreground-child cache-miss
+167 http fetch GET 200 https://registry.npmjs.org/minipass 231ms (cache miss)
+168 silly packumentCache full:https://registry.npmjs.org/minipass set size:undefined disposed:false
+169 http fetch GET 200 https://registry.npmjs.org/path-scurry 48ms (cache miss)
+170 silly packumentCache full:https://registry.npmjs.org/path-scurry set size:undefined disposed:false
+171 http fetch GET 200 https://registry.npmjs.org/foreground-child 44ms (cache miss)
+172 silly packumentCache full:https://registry.npmjs.org/foreground-child set size:undefined disposed:false
+173 silly fetch manifest typescript@>=4.8.4 <6.0.0
+174 silly packumentCache full:https://registry.npmjs.org/typescript cache-miss
+175 http cache https://registry.npmjs.org/typescript 45ms (cache hit)
+176 silly packumentCache full:https://registry.npmjs.org/typescript set size:15253842 disposed:false
+177 silly fetch manifest eslint@^8.57.0 || ^9.0.0
+178 silly packumentCache full:https://registry.npmjs.org/eslint cache-miss
+179 http cache https://registry.npmjs.org/eslint 24ms (cache hit)
+180 silly packumentCache full:https://registry.npmjs.org/eslint set size:1929113 disposed:false
+181 silly fetch manifest jiti@*
+182 silly packumentCache full:https://registry.npmjs.org/jiti cache-miss
+183 http fetch GET 200 https://registry.npmjs.org/jiti 137ms (cache miss)
+184 silly packumentCache full:https://registry.npmjs.org/jiti set size:undefined disposed:false
+185 silly placeDep ROOT @typescript-eslint/scope-manager@8.55.0 OK for: @typescript-eslint/eslint-plugin@8.55.0 want: 8.55.0
+186 silly placeDep ROOT @typescript-eslint/type-utils@8.55.0 OK for: @typescript-eslint/eslint-plugin@8.55.0 want: 8.55.0
+187 silly placeDep ROOT @typescript-eslint/utils@8.55.0 OK for: @typescript-eslint/eslint-plugin@8.55.0 want: 8.55.0
+188 silly placeDep ROOT @typescript-eslint/visitor-keys@8.55.0 OK for: @typescript-eslint/eslint-plugin@8.55.0 want: 8.55.0
+189 silly placeDep node_modules/@typescript-eslint/eslint-plugin ignore@7.0.5 OK for: @typescript-eslint/eslint-plugin@8.55.0 want: ^7.0.5
+190 silly placeDep ROOT ts-api-utils@2.4.0 OK for: @typescript-eslint/eslint-plugin@8.55.0 want: ^2.4.0
+191 silly fetch manifest eslint-visitor-keys@^4.2.1
+192 silly packumentCache full:https://registry.npmjs.org/eslint-visitor-keys cache-miss
+193 http fetch GET 200 https://registry.npmjs.org/eslint-visitor-keys 106ms (cache miss)
+194 silly packumentCache full:https://registry.npmjs.org/eslint-visitor-keys set size:undefined disposed:false
+195 silly placeDep ROOT @typescript-eslint/types@8.55.0 OK for: @typescript-eslint/parser@8.55.0 want: 8.55.0
+196 silly placeDep ROOT @typescript-eslint/typescript-estree@8.55.0 OK for: @typescript-eslint/parser@8.55.0 want: 8.55.0
+197 silly fetch manifest minimatch@^9.0.5
+198 silly packumentCache full:https://registry.npmjs.org/minimatch cache-miss
+199 silly fetch manifest @typescript-eslint/tsconfig-utils@8.55.0
+200 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftsconfig-utils cache-miss
+201 silly fetch manifest @typescript-eslint/project-service@8.55.0
+202 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2fproject-service cache-miss
+203 http cache https://registry.npmjs.org/minimatch 8ms (cache hit)
+204 silly packumentCache full:https://registry.npmjs.org/minimatch set size:310964 disposed:false
+205 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2ftsconfig-utils 81ms (cache miss)
+206 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftsconfig-utils set size:undefined disposed:false
+207 http fetch GET 200 https://registry.npmjs.org/@typescript-eslint%2fproject-service 95ms (cache miss)
+208 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2fproject-service set size:undefined disposed:false
+209 silly placeDep ROOT @typescript-eslint/project-service@8.55.0 OK for: @typescript-eslint/typescript-estree@8.55.0 want: 8.55.0
+210 silly placeDep ROOT @typescript-eslint/tsconfig-utils@8.55.0 OK for: @typescript-eslint/typescript-estree@8.55.0 want: 8.55.0
+211 silly placeDep node_modules/@typescript-eslint/typescript-estree minimatch@9.0.5 OK for: @typescript-eslint/typescript-estree@8.55.0 want: ^9.0.5
+212 silly fetch manifest @typescript-eslint/tsconfig-utils@^8.55.0
+213 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftsconfig-utils cache-miss
+214 silly fetch manifest brace-expansion@^2.0.1
+215 silly packumentCache full:https://registry.npmjs.org/brace-expansion cache-miss
+216 http cache https://registry.npmjs.org/@typescript-eslint%2ftsconfig-utils 6ms (cache hit)
+217 silly packumentCache full:https://registry.npmjs.org/@typescript-eslint%2ftsconfig-utils set size:885624 disposed:false
+218 http fetch GET 200 https://registry.npmjs.org/brace-expansion 64ms (cache miss)
+219 silly packumentCache full:https://registry.npmjs.org/brace-expansion set size:undefined disposed:false
+220 silly placeDep node_modules/@typescript-eslint/visitor-keys eslint-visitor-keys@4.2.1 OK for: @typescript-eslint/visitor-keys@8.55.0 want: ^4.2.1
+221 silly placeDep ROOT foreground-child@3.3.1 OK for: glob@10.3.10 want: ^3.1.0
+222 silly placeDep ROOT jackspeak@2.3.6 OK for: glob@10.3.10 want: ^2.3.5
+223 silly placeDep node_modules/glob minimatch@9.0.5 OK for: glob@10.3.10 want: ^9.0.1
+224 silly placeDep ROOT minipass@7.1.2 OK for: glob@10.3.10 want: ^5.0.0 || ^6.0.2 || ^7.0.0
+225 silly placeDep ROOT path-scurry@1.11.1 OK for: glob@10.3.10 want: ^1.10.1
+226 silly fetch manifest signal-exit@^4.0.1
+227 silly packumentCache full:https://registry.npmjs.org/signal-exit cache-miss
+228 silly fetch manifest @isaacs/cliui@^8.0.2
+229 silly packumentCache full:https://registry.npmjs.org/@isaacs%2fcliui cache-miss
+230 silly fetch manifest @pkgjs/parseargs@^0.11.0
+231 silly packumentCache full:https://registry.npmjs.org/@pkgjs%2fparseargs cache-miss
+232 http fetch GET 200 https://registry.npmjs.org/signal-exit 43ms (cache miss)
+233 silly packumentCache full:https://registry.npmjs.org/signal-exit set size:undefined disposed:false
+234 silly fetch manifest lru-cache@^10.2.0
+235 silly packumentCache full:https://registry.npmjs.org/lru-cache cache-miss
+236 http fetch GET 200 https://registry.npmjs.org/@pkgjs%2fparseargs 286ms (cache miss)
+237 silly packumentCache full:https://registry.npmjs.org/@pkgjs%2fparseargs set size:undefined disposed:false
+238 http fetch GET 200 https://registry.npmjs.org/lru-cache 247ms (cache miss)
+239 silly packumentCache full:https://registry.npmjs.org/lru-cache set size:undefined disposed:false
+240 http fetch GET 200 https://registry.npmjs.org/@isaacs%2fcliui 678ms (cache miss)
+241 silly packumentCache full:https://registry.npmjs.org/@isaacs%2fcliui set size:undefined disposed:false
+242 silly placeDep ROOT signal-exit@4.1.0 OK for: foreground-child@3.3.1 want: ^4.0.1
+243 silly placeDep ROOT @isaacs/cliui@8.0.2 OK for: jackspeak@2.3.6 want: ^8.0.2
+244 silly placeDep ROOT @pkgjs/parseargs@0.11.0 OK for: jackspeak@2.3.6 want: ^0.11.0
+245 silly fetch manifest wrap-ansi@^8.1.0
+246 silly packumentCache full:https://registry.npmjs.org/wrap-ansi cache-miss
+247 silly fetch manifest strip-ansi@^7.0.1
+248 silly packumentCache full:https://registry.npmjs.org/strip-ansi cache-miss
+249 silly fetch manifest string-width@^5.1.2
+250 silly packumentCache full:https://registry.npmjs.org/string-width cache-miss
+251 http fetch GET 200 https://registry.npmjs.org/strip-ansi 127ms (cache miss)
+252 silly packumentCache full:https://registry.npmjs.org/strip-ansi set size:undefined disposed:false
+253 silly fetch manifest wrap-ansi-cjs@npm:wrap-ansi@^7.0.0
+254 silly packumentCache full:https://registry.npmjs.org/wrap-ansi cache-miss
+255 http fetch GET 200 https://registry.npmjs.org/wrap-ansi 129ms (cache miss)
+256 silly packumentCache full:https://registry.npmjs.org/wrap-ansi set size:undefined disposed:false
+257 silly fetch manifest strip-ansi-cjs@npm:strip-ansi@^6.0.1
+258 silly packumentCache full:https://registry.npmjs.org/strip-ansi cache-miss
+259 http cache https://registry.npmjs.org/wrap-ansi 9ms (cache hit)
+260 silly packumentCache full:https://registry.npmjs.org/wrap-ansi set size:51195 disposed:false
+261 silly fetch manifest string-width-cjs@npm:string-width@^4.2.0
+262 silly packumentCache full:https://registry.npmjs.org/string-width cache-miss
+263 http cache https://registry.npmjs.org/strip-ansi 9ms (cache hit)
+264 silly packumentCache full:https://registry.npmjs.org/strip-ansi set size:41855 disposed:false
+265 http fetch GET 200 https://registry.npmjs.org/string-width 158ms (cache miss)
+266 silly packumentCache full:https://registry.npmjs.org/string-width set size:undefined disposed:false
+267 http fetch GET 200 https://registry.npmjs.org/string-width 38ms (cache miss)
+268 silly packumentCache full:https://registry.npmjs.org/string-width set size:undefined disposed:false
+269 silly placeDep ROOT string-width@5.1.2 OK for: @isaacs/cliui@8.0.2 want: ^5.1.2
+270 silly placeDep ROOT string-width-cjs@4.2.3 OK for: @isaacs/cliui@8.0.2 want: npm:string-width@^4.2.0
+271 silly placeDep node_modules/@isaacs/cliui strip-ansi@7.1.2 OK for: @isaacs/cliui@8.0.2 want: ^7.0.1
+272 silly placeDep ROOT strip-ansi-cjs@6.0.1 OK for: @isaacs/cliui@8.0.2 want: npm:strip-ansi@^6.0.1
+273 silly placeDep ROOT wrap-ansi@8.1.0 OK for: @isaacs/cliui@8.0.2 want: ^8.1.0
+274 silly placeDep ROOT wrap-ansi-cjs@7.0.0 OK for: @isaacs/cliui@8.0.2 want: npm:wrap-ansi@^7.0.0
+275 silly fetch manifest eastasianwidth@^0.2.0
+276 silly packumentCache full:https://registry.npmjs.org/eastasianwidth cache-miss
+277 silly fetch manifest emoji-regex@^8.0.0
+278 silly packumentCache full:https://registry.npmjs.org/emoji-regex cache-miss
+279 silly fetch manifest is-fullwidth-code-point@^3.0.0
+280 silly packumentCache full:https://registry.npmjs.org/is-fullwidth-code-point cache-miss
+281 http fetch GET 200 https://registry.npmjs.org/eastasianwidth 62ms (cache miss)
+282 silly packumentCache full:https://registry.npmjs.org/eastasianwidth set size:undefined disposed:false
+283 silly fetch manifest ansi-regex@^6.0.1
+284 silly packumentCache full:https://registry.npmjs.org/ansi-regex cache-miss
+285 http fetch GET 200 https://registry.npmjs.org/is-fullwidth-code-point 68ms (cache miss)
+286 silly packumentCache full:https://registry.npmjs.org/is-fullwidth-code-point set size:undefined disposed:false
+287 silly fetch manifest ansi-styles@^6.1.0
+288 silly packumentCache full:https://registry.npmjs.org/ansi-styles cache-miss
+289 http fetch GET 200 https://registry.npmjs.org/emoji-regex 72ms (cache miss)
+290 silly packumentCache full:https://registry.npmjs.org/emoji-regex set size:undefined disposed:false
+291 silly fetch manifest string-width@^4.1.0
+292 silly packumentCache full:https://registry.npmjs.org/string-width cache-miss
+293 http cache https://registry.npmjs.org/string-width 7ms (cache hit)
+294 silly packumentCache full:https://registry.npmjs.org/string-width set size:66232 disposed:false
+295 http fetch GET 200 https://registry.npmjs.org/ansi-regex 35ms (cache miss)
+296 silly packumentCache full:https://registry.npmjs.org/ansi-regex set size:undefined disposed:false
+297 http fetch GET 200 https://registry.npmjs.org/ansi-styles 55ms (cache miss)
+298 silly packumentCache full:https://registry.npmjs.org/ansi-styles set size:undefined disposed:false
+299 silly placeDep ROOT @next/env@14.2.25 OK for: next@14.2.25 want: 14.2.25
+300 silly placeDep ROOT @next/swc-darwin-arm64@14.2.25 OK for: next@14.2.25 want: 14.2.25
+301 silly placeDep ROOT @next/swc-darwin-x64@14.2.25 OK for: next@14.2.25 want: 14.2.25
+302 silly placeDep ROOT @next/swc-linux-arm64-gnu@14.2.25 OK for: next@14.2.25 want: 14.2.25
+303 silly placeDep ROOT @next/swc-linux-arm64-musl@14.2.25 OK for: next@14.2.25 want: 14.2.25
+304 silly placeDep ROOT @next/swc-linux-x64-gnu@14.2.25 OK for: next@14.2.25 want: 14.2.25
+305 silly placeDep ROOT @next/swc-linux-x64-musl@14.2.25 OK for: next@14.2.25 want: 14.2.25
+306 silly placeDep ROOT @next/swc-win32-arm64-msvc@14.2.25 OK for: next@14.2.25 want: 14.2.25
+307 silly placeDep ROOT @next/swc-win32-ia32-msvc@14.2.25 OK for: next@14.2.25 want: 14.2.25
+308 silly placeDep ROOT @next/swc-win32-x64-msvc@14.2.25 OK for: next@14.2.25 want: 14.2.25
+309 silly placeDep ROOT lru-cache@10.4.3 OK for: path-scurry@1.11.1 want: ^10.2.0
+310 silly placeDep ROOT eastasianwidth@0.2.0 OK for: string-width@5.1.2 want: ^0.2.0
+311 silly placeDep node_modules/string-width strip-ansi@7.1.2 OK for: string-width@5.1.2 want: ^7.0.1
+312 silly placeDep node_modules/string-width-cjs emoji-regex@8.0.0 OK for: string-width@4.2.3 want: ^8.0.0
+313 silly placeDep ROOT is-fullwidth-code-point@3.0.0 OK for: string-width@4.2.3 want: ^3.0.0
+314 silly placeDep node_modules/wrap-ansi ansi-styles@6.2.3 OK for: wrap-ansi@8.1.0 want: ^6.1.0
+315 silly placeDep node_modules/wrap-ansi strip-ansi@7.1.2 OK for: wrap-ansi@8.1.0 want: ^7.0.1
+316 silly placeDep node_modules/wrap-ansi-cjs string-width@4.2.3 OK for: wrap-ansi@7.0.0 want: ^4.1.0
+317 silly placeDep node_modules/@isaacs/cliui ansi-regex@6.2.2 OK for: strip-ansi@7.1.2 want: ^6.0.1
+318 silly placeDep node_modules/@typescript-eslint/typescript-estree brace-expansion@2.0.2 OK for: minimatch@9.0.5 want: ^2.0.1
+319 silly placeDep node_modules/glob brace-expansion@2.0.2 OK for: minimatch@9.0.5 want: ^2.0.1
+320 silly placeDep node_modules/string-width ansi-regex@6.2.2 OK for: strip-ansi@7.1.2 want: ^6.0.1
+321 silly placeDep node_modules/wrap-ansi-cjs emoji-regex@8.0.0 OK for: string-width@4.2.3 want: ^8.0.0
+322 silly placeDep node_modules/wrap-ansi ansi-regex@6.2.2 OK for: strip-ansi@7.1.2 want: ^6.0.1
+323 silly reify mark retired [
+323 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/env'
+323 silly reify ]
+324 silly reify mark retired [
+324 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/eslint-plugin-next'
+324 silly reify ]
+325 silly reify mark retired [
+325 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/swc-darwin-x64'
+325 silly reify ]
+326 silly reify mark retired [
+326 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/parser'
+326 silly reify ]
+327 silly reify mark retired [
+327 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/scope-manager'
+327 silly reify ]
+328 silly reify mark retired [
+328 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/types'
+328 silly reify ]
+329 silly reify mark retired [
+329 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/typescript-estree'
+329 silly reify ]
+330 silly reify mark retired [
+330 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/visitor-keys'
+330 silly reify ]
+331 silly reify mark retired [
+331 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/array-union'
+331 silly reify ]
+332 silly reify mark retired [ '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/braces' ]
+333 silly reify mark retired [
+333 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/dir-glob'
+333 silly reify ]
+334 silly reify mark retired [
+334 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/eslint-config-next'
+334 silly reify ]
+335 silly reify mark retired [
+335 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/fast-glob'
+335 silly reify ]
+336 silly reify mark retired [
+336 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/fill-range'
+336 silly reify ]
+337 silly reify mark retired [ '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/globby' ]
+338 silly reify mark retired [
+338 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/is-number'
+338 silly reify ]
+339 silly reify mark retired [ '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/merge2' ]
+340 silly reify mark retired [
+340 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/micromatch'
+340 silly reify ]
+341 silly reify mark retired [
+341 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/next',
+341 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.bin/next'
+341 silly reify ]
+342 silly reify mark retired [
+342 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/path-type'
+342 silly reify ]
+343 silly reify mark retired [
+343 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/picomatch'
+343 silly reify ]
+344 silly reify mark retired [ '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/slash' ]
+345 silly reify mark retired [
+345 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/to-regex-range'
+345 silly reify ]
+346 silly reify mark retired [
+346 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/ts-api-utils'
+346 silly reify ]
+347 silly reify moves {
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/env': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/.env-q9ZcQDtV',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/eslint-plugin-next': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/.eslint-plugin-next-AfJg6h56',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/swc-darwin-x64': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/.swc-darwin-x64-aXsckmvx',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/parser': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/.parser-Xo55l4hk',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/scope-manager': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/.scope-manager-u5YO6ILE',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/types': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/.types-rifp1l1V',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/typescript-estree': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/.typescript-estree-nyp6hSdC',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/visitor-keys': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@typescript-eslint/.visitor-keys-3HQfGXDu',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/array-union': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.array-union-w9xaVxU8',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/braces': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.braces-CTxiPhJw',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/dir-glob': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.dir-glob-FDLYZZK4',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/eslint-config-next': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.eslint-config-next-1XUwEHbF',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/fast-glob': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.fast-glob-jOUowuM2',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/fill-range': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.fill-range-0yzULrWN',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/globby': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.globby-LIhDZkQq',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/is-number': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.is-number-WekeqXrv',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/merge2': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.merge2-LvUjS7r6',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/micromatch': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.micromatch-NnXGF9U0',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/next': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.next-doDPOrcC',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.bin/next': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.bin/.next-pF8FNyWo',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/path-type': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.path-type-sScFcxRb',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/picomatch': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.picomatch-pP39BUFy',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/slash': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.slash-v0gdKtp5',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/to-regex-range': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.to-regex-range-uJbrInk1',
+347 silly reify   '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/ts-api-utils': '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/.ts-api-utils-25wSfYou'
+347 silly reify }
+348 verbose stack Error: EACCES: permission denied, rename '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/env' -> '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/.env-q9ZcQDtV'
+348 verbose stack     at async Object.rename (node:internal/fs/promises:782:10)
+348 verbose stack     at async moveFile (/usr/local/lib/node_modules/npm/node_modules/@npmcli/fs/lib/move-file.js:30:5)
+348 verbose stack     at async Promise.allSettled (index 0)
+348 verbose stack     at async [reifyPackages] (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:313:11)
+348 verbose stack     at async Arborist.reify (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:125:5)
+348 verbose stack     at async Install.exec (/usr/local/lib/node_modules/npm/lib/commands/install.js:150:5)
+348 verbose stack     at async Npm.exec (/usr/local/lib/node_modules/npm/lib/npm.js:208:9)
+348 verbose stack     at async module.exports (/usr/local/lib/node_modules/npm/lib/cli/entry.js:67:5)
+349 error code EACCES
+350 error syscall rename
+351 error path /Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/env
+352 error dest /Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/.env-q9ZcQDtV
+353 error errno -13
+354 error Error: EACCES: permission denied, rename '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/env' -> '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/.env-q9ZcQDtV'
+354 error     at async Object.rename (node:internal/fs/promises:782:10)
+354 error     at async moveFile (/usr/local/lib/node_modules/npm/node_modules/@npmcli/fs/lib/move-file.js:30:5)
+354 error     at async Promise.allSettled (index 0)
+354 error     at async [reifyPackages] (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:313:11)
+354 error     at async Arborist.reify (/usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/lib/arborist/reify.js:125:5)
+354 error     at async Install.exec (/usr/local/lib/node_modules/npm/lib/commands/install.js:150:5)
+354 error     at async Npm.exec (/usr/local/lib/node_modules/npm/lib/npm.js:208:9)
+354 error     at async module.exports (/usr/local/lib/node_modules/npm/lib/cli/entry.js:67:5) {
+354 error   errno: -13,
+354 error   code: 'EACCES',
+354 error   syscall: 'rename',
+354 error   path: '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/env',
+354 error   dest: '/Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/node_modules/@next/.env-q9ZcQDtV'
+354 error }
+355 error
+355 error The operation was rejected by your operating system.
+355 error It is likely you do not have the permissions to access this file as the current user
+355 error
+355 error If you believe this might be a permissions issue, please double-check the
+355 error permissions of the file and its containing directories, or try running
+355 error the command again as root/Administrator.
+356 silly unfinished npm timer reify 1771242917332
+357 silly unfinished npm timer reify:retireShallow 1771242927788
+358 verbose cwd /Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs
+359 verbose os Darwin 22.6.0
+360 verbose node v24.13.0
+361 verbose npm  v11.6.2
+362 notice
+362 notice New minor version of npm available! 11.6.2 -> 11.10.0
+362 notice Changelog: https://github.com/npm/cli/releases/tag/v11.10.0
+362 notice To update run: npm install -g npm@11.10.0
+362 notice  { force: true, Symbol(proc-log.meta): true }
+363 verbose exit -13
+364 verbose code -13
+365 error A complete log of this run can be found in: /Users/cosmin.pascariu/Desktop/gaz/gaz-nextjs/.npm-cache/_logs/2026-02-16T11_55_16_946Z-debug-0.log

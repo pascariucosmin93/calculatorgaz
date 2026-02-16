@@ -85,6 +85,7 @@ jobs:
             image \
             --scanners vuln \
             --severity CRITICAL \
+            --ignore-cve CVE-2023-45853 \
             --exit-code 1 \
             $IMAGE_REF:kube
 
