@@ -403,8 +403,8 @@ export default function Home() {
   );
 
   const handleAdminLoad = useCallback(async () => {
-    if (!user?.email || user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-      setAdminError("Nu ai permisiuni de admin.");
+    if (!user?.email) {
+      setAdminError("Nu ai un email asociat contului.");
       return;
     }
     if (!adminPassword.trim()) {
@@ -453,8 +453,8 @@ export default function Home() {
 
   const handleAdminDelete = useCallback(
     async (userId: string) => {
-      if (!user?.email || user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-        setAdminError("Nu ai permisiuni de admin.");
+      if (!user?.email) {
+        setAdminError("Nu ai un email asociat contului.");
         return;
       }
       if (!adminPassword.trim()) {
@@ -473,8 +473,8 @@ export default function Home() {
         const response = await fetch("/api/admin/users", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, password: adminPassword, userId })
-        });
+        body: JSON.stringify({ email: user.email, password: adminPassword, userId })
+      });
 
         let data: any = null;
         try {
@@ -851,7 +851,7 @@ export default function Home() {
           onResetPasswordSubmit={handleResetPasswordSubmit}
           onLogout={handleLogout}
         />
-        {user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && (
+        {user && (
           <AdminUsersPanel
             adminEmail={ADMIN_EMAIL}
             adminPassword={adminPassword}
