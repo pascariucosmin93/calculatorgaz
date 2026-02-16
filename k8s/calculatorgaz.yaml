@@ -48,7 +48,7 @@ spec:
               fi
       containers:
         - name: calculatorgaz
-          image: registry.infraejobs.ro/infra/gaz/calculatorgaz:kube
+          image: registry.infraejobs.ro/infra/gaz/calculatorgaz:fa7b4b5d
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
