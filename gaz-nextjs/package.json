@@ -1,0 +1,34 @@
+{
+  "name": "gaz-nextjs",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "npm run lint",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "bcryptjs": "2.4.3",
+    "next": "14.2.3",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tesseract.js": "5.0.5",
+    "@prisma/client": "5.12.1",
+    "chart.js": "4.4.2",
+    "react-chartjs-2": "5.2.0",
+    "prisma": "5.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.30",
+    "@types/bcryptjs": "^2.4.2",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/react": "18.2.66",
+    "@types/react-dom": "18.2.22",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.3",
+    "typescript": "5.4.5"
+  }
+}

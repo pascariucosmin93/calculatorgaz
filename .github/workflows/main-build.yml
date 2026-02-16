@@ -1,0 +1,243 @@
+name: "Build & Push (main)"
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  REGISTRY: gitea.local:3000
+  REGISTRY_USER: cosmin
+  REGISTRY_TOKEN: ${{ secrets.TOCKEN_REGISTRY }}
+  IMAGE_REPO: ${{ env.REGISTRY }}/cosmin/calculatorgaz
+
+jobs:
+
+  build:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: docker
+    steps:
+      - name: Ensure Docker CLI is available
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y docker.io
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add docker docker-cli
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install docker CLI." >&2
+          exit 1
+      - name: Ensure Node is available for JS actions
+        run: |
+          if command -v node >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y nodejs npm
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add nodejs npm
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install node." >&2
+          exit 1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build container image
+        run: |
+          cd gaz-nextjs
+          docker build -t $IMAGE_REPO:swarm .
+
+  test:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: docker
+    needs: build
+    steps:
+      - name: Ensure Node is available for JS actions
+        run: |
+          if command -v node >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y nodejs npm
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add nodejs npm
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install node." >&2
+          exit 1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 21
+
+      - name: Install dependencies
+        run: |
+          cd gaz-nextjs
+          npm install
+
+      - name: Run tests
+        run: |
+          cd gaz-nextjs
+          npm test
+
+  push:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: docker
+    needs: test
+    steps:
+      - name: Ensure Docker CLI is available
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y docker.io
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add docker docker-cli
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install docker CLI." >&2
+          exit 1
+      - name: Ensure Node is available for JS actions
+        run: |
+          if command -v node >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y nodejs npm
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add nodejs npm
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install node." >&2
+          exit 1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_TOKEN }}
+
+      - name: Build SWARM image
+        run: |
+          cd gaz-nextjs
+          docker build -t $IMAGE_REPO:swarm .
+
+      # Trivy scan temporarily disabled
+      # - name: Scan container with Trivy (docker image)
+      #   run: |
+      #     docker pull docker.io/aquasecurity/trivy:0.50.2
+      #     docker run --rm \
+      #       -v "$(pwd)":/workspace \
+      #       -w /workspace \
+      #       docker.io/aquasecurity/trivy:0.50.2 \
+      #       image $IMAGE_REPO:swarm \
+      #       --format template \
+      #       --template "@trivy-csv.tpl" \
+      #       --output trivy-report.csv \
+      #       --skip-dirs root/.npm/_cacache \
+      #       --scanners vuln
+
+      # - name: Upload Trivy report
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: trivy-report-swarm
+      #     path: trivy-report.csv
+      #     if-no-files-found: error
+
+      - name: Push SWARM image
+        run: docker push $IMAGE_REPO:swarm
+
+  publish-latest:
+    runs-on: docker
+    needs: push
+
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+    steps:
+      - name: Ensure Docker CLI is available
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y docker.io
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add docker docker-cli
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install docker CLI." >&2
+          exit 1
+      - name: Ensure Node is available for JS actions
+        run: |
+          if command -v node >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y nodejs npm
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add nodejs npm
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install node." >&2
+          exit 1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_TOKEN }}
+
+      - name: Pull swarm image
+        run: docker pull $IMAGE_REPO:swarm
+
+      - name: Tag as latest
+        run: docker tag $IMAGE_REPO:swarm $IMAGE_REPO:latest
+
+      - name: Push latest
+        run: docker push $IMAGE_REPO:latest

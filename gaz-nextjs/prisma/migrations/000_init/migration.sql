@@ -1,0 +1,18 @@
+-- CreateTable
+CREATE TABLE "Reading" (
+    "id" TEXT NOT NULL,
+    "previousReading" DOUBLE PRECISION NOT NULL,
+    "currentReading" DOUBLE PRECISION NOT NULL,
+    "consumptionM3" DOUBLE PRECISION NOT NULL,
+    "consumptionKwh" DOUBLE PRECISION NOT NULL,
+    "pricePerKwh" DOUBLE PRECISION NOT NULL,
+    "pricePerM3" DOUBLE PRECISION NOT NULL,
+    "conversionFactor" DOUBLE PRECISION NOT NULL,
+    "fixedFee" DOUBLE PRECISION NOT NULL,
+    "includeVat" BOOLEAN NOT NULL,
+    "subtotal" DOUBLE PRECISION NOT NULL,
+    "vat" DOUBLE PRECISION NOT NULL,
+    "total" DOUBLE PRECISION NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Reading_pkey" PRIMARY KEY ("id")
+);
