@@ -11,7 +11,7 @@ permissions:
 
 env:
   REGISTRY: registry.infraejobs.ro
-  IMAGE_REPO: registry.infraejobs.ro/gaz/calculatorgaz
+  IMAGE_REPO: registry.infraejobs.ro/infra/gaz/calculatorgaz
   REGISTRY_USER: ci-registry
   REGISTRY_PASSWORD: devops
 
