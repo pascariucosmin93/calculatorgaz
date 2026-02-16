@@ -876,7 +876,7 @@ export default function Home() {
             onSubmit={handleProfileSubmit}
           />
         )}
-        {user ? (
+        {user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? null : user ? (
           <>
             <form style={styles.card} onSubmit={handleSubmit}>
               <div style={styles.brandBar}>
