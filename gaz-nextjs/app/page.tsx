@@ -851,7 +851,7 @@ export default function Home() {
           onResetPasswordSubmit={handleResetPasswordSubmit}
           onLogout={handleLogout}
         />
-        {user && (
+        {user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && (
           <AdminUsersPanel
             adminEmail={ADMIN_EMAIL}
             adminPassword={adminPassword}
