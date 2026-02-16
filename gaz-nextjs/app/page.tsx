@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AuthStatusCard } from "./components/AuthStatusCard";
+import { AdminUsersPanel, AdminUser } from "./components/AdminUsersPanel";
 import { ProfileForm } from "./components/ProfileForm";
 import { ReadingSection } from "./components/ReadingSection";
 import { SettingsForm } from "./components/SettingsForm";
@@ -25,6 +26,7 @@ const THEME_STORAGE_KEY = "gaz-calculator:theme";
 const METER_SERIAL = "00838754/2013";
 const NAV_ITEMS = ["Acasă", "Autocitire", "Facturi", "Consum", "Myline"];
 const DEFAULT_ADDRESS = "Adresa locului de consum nu este configurată pentru acest cont.";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "adim@gmail.com";
 
 const getSettingsStorageKey = (userId: string) => `gaz-calculator:last-reading:v2:${userId}`;
 
@@ -80,6 +82,11 @@ export default function Home() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState("");
+  const [adminSuccess, setAdminSuccess] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus>("idle");
   const latestEntry = useMemo(() => {
@@ -165,6 +172,10 @@ export default function Home() {
       setProfileAddress("");
       setProfileError("");
       setProfileSuccess("");
+      setAdminPassword("");
+      setAdminUsers([]);
+      setAdminError("");
+      setAdminSuccess("");
       return;
     }
     setProfileOwnerName(user.ownerName ?? "");
@@ -389,6 +400,107 @@ export default function Home() {
       }
     },
     [profileAddress, profileOwnerName, user?.id]
+  );
+
+  const handleAdminLoad = useCallback(async () => {
+    if (!user?.email || user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      setAdminError("Nu ai permisiuni de admin.");
+      return;
+    }
+    if (!adminPassword.trim()) {
+      setAdminError("Introdu parola de admin.");
+      return;
+    }
+
+    setAdminLoading(true);
+    setAdminError("");
+    setAdminSuccess("");
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email, password: adminPassword })
+      });
+
+      let data: any = null;
+      try {
+        const text = await response.text();
+        if (text) {
+          data = JSON.parse(text);
+        }
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        const errMsg = (data && data.error) || "Nu am putut încărca lista de conturi.";
+        throw new Error(errMsg);
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error("Răspuns invalid de la server.");
+      }
+
+      setAdminUsers(data);
+      setAdminSuccess(`Au fost încărcate ${data.length} conturi.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Nu am putut încărca lista de conturi.";
+      setAdminError(message);
+    } finally {
+      setAdminLoading(false);
+    }
+  }, [adminPassword, user?.email]);
+
+  const handleAdminDelete = useCallback(
+    async (userId: string) => {
+      if (!user?.email || user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        setAdminError("Nu ai permisiuni de admin.");
+        return;
+      }
+      if (!adminPassword.trim()) {
+        setAdminError("Introdu parola de admin.");
+        return;
+      }
+
+      if (!confirm("Sigur vrei să ștergi acest cont?")) {
+        return;
+      }
+
+      setAdminLoading(true);
+      setAdminError("");
+      setAdminSuccess("");
+      try {
+        const response = await fetch("/api/admin/users", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, password: adminPassword, userId })
+        });
+
+        let data: any = null;
+        try {
+          const text = await response.text();
+          if (text) {
+            data = JSON.parse(text);
+          }
+        } catch {
+          data = null;
+        }
+
+        if (!response.ok) {
+          const errMsg = (data && data.error) || "Nu am putut șterge contul.";
+          throw new Error(errMsg);
+        }
+
+        setAdminUsers((prev) => prev.filter((item) => item.id !== userId));
+        setAdminSuccess("Contul a fost șters.");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Nu am putut șterge contul.";
+        setAdminError(message);
+      } finally {
+        setAdminLoading(false);
+      }
+    },
+    [adminPassword, user?.email]
   );
 
   const handleSubmit = useCallback(
@@ -739,6 +851,19 @@ export default function Home() {
           onResetPasswordSubmit={handleResetPasswordSubmit}
           onLogout={handleLogout}
         />
+        {user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && (
+          <AdminUsersPanel
+            adminEmail={ADMIN_EMAIL}
+            adminPassword={adminPassword}
+            users={adminUsers}
+            loading={adminLoading}
+            error={adminError}
+            success={adminSuccess}
+            onAdminPasswordChange={setAdminPassword}
+            onLoadUsers={handleAdminLoad}
+            onDeleteUser={handleAdminDelete}
+          />
+        )}
         {user && (
           <ProfileForm
             ownerName={profileOwnerName}
