@@ -1,0 +1,63 @@
+name: Build & Push (kube)
+
+on:
+  push:
+    branches:
+      - kube
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: registry.infraejobs.ro
+  IMAGE_REPO: registry.infraejobs.ro/gaz/calculatorgaz
+  REGISTRY_USER: ci-registry
+  REGISTRY_PASSWORD: devops
+
+jobs:
+  build-and-push:
+    runs-on: docker
+    steps:
+      - name: Ensure Docker CLI is available
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y docker.io
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add docker docker-cli
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install docker CLI." >&2
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set SHORT_SHA
+        id: vars
+        run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Login to private registry
+        run: |
+          echo "$REGISTRY_PASSWORD" | docker login $REGISTRY -u $REGISTRY_USER --password-stdin
+
+      - name: Build image for kube
+        run: |
+          cd gaz-nextjs
+          docker build \
+            -t $IMAGE_REPO:kube \
+            -t $IMAGE_REPO:${{ steps.vars.outputs.short_sha }} \
+            .
+
+      - name: Push kube tag
+        run: docker push $IMAGE_REPO:kube
+
+      - name: Push sha tag
+        run: docker push $IMAGE_REPO:${{ steps.vars.outputs.short_sha }}
