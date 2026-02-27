@@ -941,7 +941,12 @@ export default function Home() {
                 includeVat={includeVat}
               />
             </form>
-            <HistorySection history={history} status={historyStatus} chartTheme={chartTheme} />
+            <HistorySection
+              history={history}
+              status={historyStatus}
+              chartTheme={chartTheme}
+              userId={user?.id ?? null}
+            />
             <HelpSection />
             <BottomNav items={NAV_ITEMS} activeItem="Autocitire" />
           </>

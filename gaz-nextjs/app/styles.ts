@@ -454,6 +454,21 @@ export const styles = {
     flexDirection: "column" as const,
     gap: "1rem"
   },
+  reportActions: {
+    display: "flex",
+    gap: "0.6rem",
+    flexWrap: "wrap" as const
+  },
+  reportAction: {
+    textDecoration: "none",
+    border: "1px solid var(--border)",
+    borderRadius: "0.75rem",
+    padding: "0.45rem 0.8rem",
+    backgroundColor: "var(--surface-card)",
+    color: "var(--text-primary)",
+    fontWeight: 600,
+    fontSize: "0.85rem"
+  },
   chartWrapper: {
     width: "100%",
     minHeight: 220

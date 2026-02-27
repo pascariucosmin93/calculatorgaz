@@ -57,10 +57,6 @@ spec:
               value: 0.0.0.0
             - name: DATABASE_URL
               value: postgresql://devops:devops@postgres.postgress.svc.cluster.local:5432/gaz
-            - name: BILLING_SERVICE_URL
-              value: http://billing-service.gaz.svc.cluster.local:8080
-            - name: REPORTING_SERVICE_URL
-              value: http://reporting-service.gaz.svc.cluster.local:8081
             - name: ADMIN_EMAIL
               value: admin@gmail.com
             - name: ADMIN_PASSWORD

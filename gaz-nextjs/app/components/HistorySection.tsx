@@ -23,9 +23,10 @@ type Props = {
   history: HistoryEntry[];
   status: HistoryStatus;
   chartTheme: ChartTheme;
+  userId: string | null;
 };
 
-function HistorySectionComponent({ history, status, chartTheme }: Props) {
+function HistorySectionComponent({ history, status, chartTheme, userId }: Props) {
   const formatM3 = (value: number) => value.toFixed(1);
 
   const chartData = useMemo(() => {
@@ -89,6 +90,16 @@ function HistorySectionComponent({ history, status, chartTheme }: Props) {
   return (
     <section style={styles.historyBox}>
       <h2 style={styles.sectionTitle}>Istoric consum</h2>
+      {userId && (
+        <div style={styles.reportActions}>
+          <a href={`/api/reports/export/csv?userId=${encodeURIComponent(userId)}`} style={styles.reportAction}>
+            Descarcă CSV
+          </a>
+          <a href={`/api/reports/export/pdf?userId=${encodeURIComponent(userId)}`} style={styles.reportAction}>
+            Descarcă PDF
+          </a>
+        </div>
+      )}
       <div style={styles.chartWrapper}>
         <Line data={chartData} options={chartOptions} />
       </div>
