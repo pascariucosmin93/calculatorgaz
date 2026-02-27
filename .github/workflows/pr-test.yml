@@ -13,6 +13,12 @@ on:
 permissions:
   contents: read
 
+env:
+  REGISTRY: registry.infraejobs.ro
+  IMAGE_NAME: infra/gaz/calculatorgaz
+  REGISTRY_USER: ci-registry
+  REGISTRY_PASSWORD: devops
+
 concurrency:
   group: pr-test-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -60,7 +66,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Docker image (PR validation only)
+      - name: Set image tags
+        id: vars
+        run: |
+          echo "short_sha=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+          echo "pr_number=${{ github.event.pull_request.number || 'manual' }}" >> $GITHUB_OUTPUT
+
+      - name: Login to private registry
+        run: |
+          echo "$REGISTRY_PASSWORD" | docker login $REGISTRY -u $REGISTRY_USER --password-stdin
+
+      - name: Build Docker image (PR validation + push)
         run: |
           cd gaz-nextjs
-          docker build -t calculatorgaz:pr-${{ github.sha }} .
+          IMAGE_REF="$REGISTRY/$IMAGE_NAME"
+          docker build \
+            -t calculatorgaz:pr-${{ github.sha }} \
+            -t $IMAGE_REF:pr-${{ steps.vars.outputs.pr_number }}-${{ steps.vars.outputs.short_sha }} \
+            -t $IMAGE_REF:pr-latest \
+            .
+
+      - name: Push PR image tags
+        run: |
+          IMAGE_REF="$REGISTRY/$IMAGE_NAME"
+          docker push $IMAGE_REF:pr-${{ steps.vars.outputs.pr_number }}-${{ steps.vars.outputs.short_sha }}
+          docker push $IMAGE_REF:pr-latest
