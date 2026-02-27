@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
   const owner = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true }
+    select: { id: true, username: true, ownerName: true, email: true }
   });
   if (!owner) {
     return NextResponse.json({ error: "Utilizator invalid." }, { status: 401 });
@@ -161,6 +161,9 @@ export async function POST(request: Request) {
   sendNotification({
     message: "Citire nouă salvată",
     details: {
+      username: owner.username,
+      ownerName: owner.ownerName ?? "-",
+      email: owner.email ?? "-",
       userId,
       readingId: entry.id,
       previousReading: Number(previousReading.toFixed(3)),
