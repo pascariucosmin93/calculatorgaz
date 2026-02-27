@@ -53,6 +53,8 @@ spec:
           env:
             - name: HOSTNAME
               value: 0.0.0.0
+            - name: RESET_PASSWORD_BASE_URL
+              value: http://10.40.10.53/resetare
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
