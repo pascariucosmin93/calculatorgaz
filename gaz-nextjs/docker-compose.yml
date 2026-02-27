@@ -26,7 +26,7 @@ services:
       DATABASE_URL: postgresql://gaz:gazpass@db:5432/gaz
       HOSTNAME: 0.0.0.0
       RESET_PASSWORD_BASE_URL: https://reset.gaz.cosmin-lab.cloud/
-      DISCORD_RESET_WEBHOOK_URL: https://discord.com/api/webhooks/1417184822111113326/f3ah4RcK7YNEFZ5LD_uBdVuOtEWNDhufgzSXXv9fkPeCBMTQjr8KMeGRsya1_XFbjTpd
+      DISCORD_RESET_WEBHOOK_URL: ${DISCORD_RESET_WEBHOOK_URL:-}
     depends_on:
       - db
     deploy:

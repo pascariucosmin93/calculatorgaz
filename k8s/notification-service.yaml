@@ -1,13 +1,4 @@
 apiVersion: v1
-kind: Secret
-metadata:
-  name: notification-service-secrets
-  namespace: gaz
-type: Opaque
-stringData:
-  DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/1417184822111113326/f3ah4RcK7YNEFZ5LD_uBdVuOtEWNDhufgzSXXv9fkPeCBMTQjr8KMeGRsya1_XFbjTpd"
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: notification-service-script
