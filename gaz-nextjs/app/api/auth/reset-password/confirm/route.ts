@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 
-const AUTH_SERVICE_URL =
-  process.env.AUTH_SERVICE_URL?.trim() ??
-  "http://auth-service:8083";
+const PASSWORD_RESET_SERVICE_URL =
+  process.env.PASSWORD_RESET_SERVICE_URL?.trim() ??
+  "http://password-reset-service:8086";
 
 export async function POST(request: Request) {
   try {
     const body = await request.text();
-    const response = await fetch(`${AUTH_SERVICE_URL.replace(/\/+$/, "")}/auth/reset-password/confirm`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-      signal: AbortSignal.timeout(10_000),
-      cache: "no-store"
-    });
+    const response = await fetch(
+      `${PASSWORD_RESET_SERVICE_URL.replace(/\/+$/, "")}/password-reset/confirm`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        signal: AbortSignal.timeout(10_000),
+        cache: "no-store"
+      }
+    );
 
     const text = await response.text();
     return new NextResponse(text, {
@@ -22,7 +25,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: `Auth service indisponibil: ${error instanceof Error ? error.message : "unknown"}` },
+      {
+        error: `Password reset service indisponibil: ${
+          error instanceof Error ? error.message : "unknown"
+        }`
+      },
       { status: 502 }
     );
   }

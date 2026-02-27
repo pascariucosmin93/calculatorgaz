@@ -65,6 +65,8 @@ spec:
               value: http://notification-service:8082
             - name: AUTH_SERVICE_URL
               value: http://auth-service:8083
+            - name: PASSWORD_RESET_SERVICE_URL
+              value: http://password-reset-service:8086
             - name: READING_SERVICE_URL
               value: http://reading-service:8084
             - name: ADMIN_EMAIL
