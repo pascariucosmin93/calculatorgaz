@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { indexReadingDocument, isElasticConfigured } from "@/lib/elasticsearch";
 import { BillingInput, calculateBilling } from "@/lib/billing";
 import { calculateViaBillingService, isBillingServiceConfigured } from "@/lib/billing-client";
 
@@ -157,35 +156,6 @@ export async function POST(request: Request) {
       userId
     }
   });
-
-  if (isElasticConfigured()) {
-    try {
-      await indexReadingDocument(entry.id, {
-        id: entry.id,
-        userId,
-        previousReading,
-        currentReading,
-        consumptionM3: bill.consumptionM3,
-        consumptionKwh: bill.consumptionKwh,
-        consumptionMwh: bill.consumptionMwh,
-        pcs,
-        gasPriceMwh,
-        transportPriceMwh,
-        distributionPriceMwh,
-        cap26PriceMwh,
-        cap6PriceMwh,
-        fixedFee,
-        includeVat,
-        vatRate,
-        subtotal: bill.subtotal,
-        vat: bill.vat,
-        total: bill.total,
-        createdAt: entry.createdAt
-      });
-    } catch (error) {
-      console.error("Failed to index reading in Elasticsearch", error);
-    }
-  }
 
   return NextResponse.json(
     {
