@@ -65,6 +65,8 @@ spec:
               value: http://notification-service.gaz.svc.cluster.local:8082
             - name: AUTH_SERVICE_URL
               value: http://auth-service.gaz.svc.cluster.local:8083
+            - name: READING_SERVICE_URL
+              value: http://reading-service.gaz.svc.cluster.local:8084
             - name: ADMIN_EMAIL
               value: admin@gmail.com
             - name: ADMIN_PASSWORD

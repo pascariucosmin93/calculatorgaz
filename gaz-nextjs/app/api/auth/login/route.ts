@@ -1,64 +1,28 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 
-import prisma from "@/lib/prisma";
-
-type Payload = {
-  identifier?: string;
-  username?: string;
-  password: string;
-};
-
-const sanitize = (value: string) => value.trim();
+const AUTH_SERVICE_URL =
+  process.env.AUTH_SERVICE_URL?.trim() ??
+  "http://auth-service.gaz.svc.cluster.local:8083";
 
 export async function POST(request: Request) {
   try {
-    let payload: Payload;
-    try {
-      payload = (await request.json()) as Payload;
-    } catch {
-      return NextResponse.json({ error: "Body invalid." }, { status: 400 });
-    }
-
-    const identifier = sanitize(payload.identifier ?? payload.username ?? "");
-    const password = payload.password ?? "";
-
-    if (!identifier || !password) {
-      return NextResponse.json(
-        { error: "Introdu emailul sau utilizatorul și parola." },
-        { status: 422 }
-      );
-    }
-
-    const normalizedIdentifier = identifier.toLowerCase();
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ username: normalizedIdentifier }, { email: normalizedIdentifier }]
-      }
+    const body = await request.text();
+    const response = await fetch(`${AUTH_SERVICE_URL.replace(/\/+$/, "")}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      cache: "no-store"
     });
 
-    if (!user) {
-      return NextResponse.json({ error: "Date de autentificare invalide." }, { status: 401 });
-    }
-
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isValid) {
-      return NextResponse.json({ error: "Date de autentificare invalide." }, { status: 401 });
-    }
-
+    const text = await response.text();
+    return new NextResponse(text, {
+      status: response.status,
+      headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" }
+    });
+  } catch (error) {
     return NextResponse.json(
-      {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        ownerName: user.ownerName,
-        address: user.address,
-        createdAt: user.createdAt
-      },
-      { status: 200 }
+      { error: `Auth service indisponibil: ${error instanceof Error ? error.message : "unknown"}` },
+      { status: 502 }
     );
-  } catch (err) {
-    console.error("/api/auth/login error:", err);
-    return NextResponse.json({ error: "Eroare server" }, { status: 500 });
   }
 }
