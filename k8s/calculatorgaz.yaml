@@ -61,6 +61,8 @@ spec:
               value: http://billing-service.gaz.svc.cluster.local:8080
             - name: REPORTING_SERVICE_URL
               value: http://reporting-service.gaz.svc.cluster.local:8081
+            - name: NOTIFICATION_SERVICE_URL
+              value: http://notification-service.gaz.svc.cluster.local:8082
             - name: ADMIN_EMAIL
               value: admin@gmail.com
             - name: ADMIN_PASSWORD

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { BillingInput, calculateBilling } from "@/lib/billing";
 import { calculateViaBillingService, isBillingServiceConfigured } from "@/lib/billing-client";
+import { sendNotification } from "@/lib/notification-client";
 
 type Payload = {
   userId: string;
@@ -155,6 +156,20 @@ export async function POST(request: Request) {
       total: bill.total,
       userId
     }
+  });
+
+  sendNotification({
+    message: "Citire nouă salvată",
+    details: {
+      userId,
+      readingId: entry.id,
+      previousReading: Number(previousReading.toFixed(3)),
+      currentReading: Number(currentReading.toFixed(3)),
+      consumptionM3: Number(bill.consumptionM3.toFixed(3)),
+      totalLei: Number(bill.total.toFixed(2))
+    }
+  }).catch((error) => {
+    console.error("Failed to send Discord notification", error);
   });
 
   return NextResponse.json(
