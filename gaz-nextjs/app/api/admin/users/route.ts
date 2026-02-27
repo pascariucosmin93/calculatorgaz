@@ -69,6 +69,27 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Lipsește utilizatorul." }, { status: 422 });
     }
 
+    const userToDelete = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, username: true }
+    });
+
+    if (!userToDelete) {
+      return NextResponse.json({ error: "Utilizatorul nu există." }, { status: 404 });
+    }
+
+    const normalizedTargetEmail = normalize(userToDelete.email).toLowerCase();
+    const normalizedTargetUsername = normalize(userToDelete.username).toLowerCase();
+    if (
+      normalizedTargetEmail === ADMIN_EMAIL ||
+      normalizedTargetUsername === ADMIN_EMAIL
+    ) {
+      return NextResponse.json(
+        { error: "Contul de admin nu poate fi șters." },
+        { status: 403 }
+      );
+    }
+
     await prisma.user.delete({ where: { id: userId } });
 
     return NextResponse.json({ ok: true }, { status: 200 });
