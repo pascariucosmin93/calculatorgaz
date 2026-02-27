@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "npm run lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:all": "npm run lint && npm run test",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "@types/react-dom": "18.2.22",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
-    "typescript": "5.4.5"
+    "typescript": "5.4.5",
+    "vitest": "^2.1.8"
   }
 }

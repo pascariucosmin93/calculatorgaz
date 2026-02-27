@@ -26,7 +26,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  unit-tests:
+    runs-on: docker25
+    steps:
+      - name: Ensure Node is available for JS actions
+        run: |
+          if command -v node >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y nodejs npm
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add nodejs npm
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install node." >&2
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          cd gaz-nextjs
+          npm ci --ignore-scripts --cache /tmp/npm-cache-gaz
+
+      - name: Run unit tests
+        run: |
+          cd gaz-nextjs
+          npm run test
+
   docker-build-test:
+    needs: unit-tests
     runs-on: docker25
     steps:
       - name: Ensure Docker CLI is available
