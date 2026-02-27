@@ -4,7 +4,7 @@ export const styles = {
     background: "var(--page-bg)",
     display: "flex",
     justifyContent: "center",
-    padding: "2rem",
+    padding: "clamp(0.75rem, 3vw, 2rem)",
     overflowY: "auto" as const
   },
   stack: {
@@ -17,8 +17,8 @@ export const styles = {
   authCard: {
     width: "100%",
     backgroundColor: "var(--card-bg)",
-    borderRadius: "1.25rem",
-    padding: "1.25rem",
+    borderRadius: "clamp(1rem, 2.2vw, 1.25rem)",
+    padding: "clamp(0.9rem, 3vw, 1.25rem)",
     boxShadow: "var(--card-shadow)",
     border: "1px solid var(--border-muted)",
     display: "flex",
@@ -34,7 +34,9 @@ export const styles = {
   },
   authTabs: {
     display: "flex",
-    gap: "0.5rem"
+    gap: "0.5rem",
+    flexWrap: "wrap" as const,
+    width: "100%"
   },
   authTab: {
     border: "1px solid var(--border)",
@@ -42,7 +44,10 @@ export const styles = {
     padding: "0.4rem 0.95rem",
     backgroundColor: "transparent",
     color: "var(--text-secondary)",
-    cursor: "pointer" as const
+    cursor: "pointer" as const,
+    flex: "1 1 140px",
+    minHeight: 40,
+    textAlign: "center" as const
   },
   authTabActive: {
     backgroundColor: "#d1081f",
@@ -61,7 +66,8 @@ export const styles = {
     fontSize: "1rem",
     outline: "none",
     backgroundColor: "var(--input-bg)",
-    color: "var(--text-primary)"
+    color: "var(--text-primary)",
+    width: "100%"
   },
   authSubmit: {
     border: "none",
@@ -72,12 +78,13 @@ export const styles = {
     fontWeight: 600,
     cursor: "pointer" as const,
     boxShadow: "0 6px 18px rgba(209,8,31,0.18)",
-    border: "1px solid rgba(0,0,0,0.12)"
+    border: "1px solid rgba(0,0,0,0.12)",
+    width: "100%"
   },
   authStatus: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: "1rem",
     flexWrap: "wrap" as const
   },
@@ -93,7 +100,8 @@ export const styles = {
     color: "var(--text-primary)",
     fontWeight: 600,
     cursor: "pointer" as const,
-    transition: "background-color 0.2s ease, color 0.2s ease"
+    transition: "background-color 0.2s ease, color 0.2s ease",
+    alignSelf: "flex-start" as const
   },
   modalOverlay: {
     position: "fixed" as const,
@@ -116,8 +124,8 @@ export const styles = {
     width: "100%",
     maxWidth: 560,
     backgroundColor: "var(--card-bg)",
-    borderRadius: "2rem",
-    padding: "1.75rem",
+    borderRadius: "clamp(1.25rem, 4vw, 2rem)",
+    padding: "clamp(1rem, 3.6vw, 1.75rem)",
     boxShadow: "var(--card-shadow)",
     display: "flex",
     flexDirection: "column" as const,
@@ -127,6 +135,8 @@ export const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    flexWrap: "wrap" as const,
+    gap: "0.7rem",
     paddingBottom: "0.75rem",
     borderBottom: "1px solid var(--border-muted)"
   },
@@ -139,7 +149,8 @@ export const styles = {
   brandActions: {
     display: "flex",
     alignItems: "center",
-    gap: "0.75rem"
+    gap: "0.75rem",
+    flexWrap: "wrap" as const
   },
   brandMeta: {
     display: "flex",
@@ -176,7 +187,7 @@ export const styles = {
   locationCard: {
     backgroundColor: "var(--surface-card)",
     borderRadius: "1.25rem",
-    padding: "1.2rem",
+    padding: "clamp(0.9rem, 3vw, 1.2rem)",
     display: "flex",
     flexDirection: "column" as const,
     gap: "0.35rem"
@@ -191,18 +202,20 @@ export const styles = {
     margin: 0,
     color: "var(--text-primary)",
     fontSize: "0.95rem",
-    lineHeight: 1.5
+    lineHeight: 1.5,
+    overflowWrap: "anywhere" as const
   },
   locationOwner: {
     margin: 0,
     color: "var(--text-secondary)",
     fontSize: "0.85rem",
-    fontWeight: 600
+    fontWeight: 600,
+    overflowWrap: "anywhere" as const
   },
   readingCard: {
     borderRadius: "1.25rem",
     border: "1px solid var(--border)",
-    padding: "1.2rem",
+    padding: "clamp(0.9rem, 3vw, 1.2rem)",
     display: "flex",
     flexDirection: "column" as const,
     gap: "0.75rem",
@@ -226,7 +239,7 @@ export const styles = {
   },
   readingValue: {
     margin: "0.15rem 0 0",
-    fontSize: "2rem",
+    fontSize: "clamp(1.5rem, 7vw, 2rem)",
     fontWeight: 700,
     color: "var(--text-primary)"
   },
@@ -236,7 +249,8 @@ export const styles = {
     fontSize: "0.85rem"
   },
   lastSubmission: {
-    minWidth: 160,
+    minWidth: 0,
+    flex: "1 1 170px",
     backgroundColor: "var(--surface-highlight)",
     borderRadius: "0.9rem",
     padding: "0.75rem 1rem"
@@ -280,7 +294,8 @@ export const styles = {
     fontSize: "1.1rem",
     outline: "none",
     backgroundColor: "var(--input-bg)",
-    color: "var(--text-primary)"
+    color: "var(--text-primary)",
+    width: "100%"
   },
   label: {
     display: "block",
@@ -308,7 +323,8 @@ export const styles = {
     fontSize: "1rem",
     cursor: "pointer" as const,
     boxShadow: "0 8px 22px rgba(209,8,31,0.18)",
-    border: "1px solid rgba(0,0,0,0.12)"
+    border: "1px solid rgba(0,0,0,0.12)",
+    width: "100%"
   },
   mobileHint: {
     margin: 0,
@@ -324,7 +340,7 @@ export const styles = {
   fieldGroup: {
     border: "1px solid var(--border)",
     borderRadius: "1.25rem",
-    padding: "1.25rem",
+    padding: "clamp(0.9rem, 3vw, 1.25rem)",
     backgroundColor: "var(--card-bg)",
     display: "flex",
     flexDirection: "column" as const,
@@ -332,7 +348,7 @@ export const styles = {
   },
   formRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))",
     gap: "1rem"
   },
   label: {
@@ -350,7 +366,8 @@ export const styles = {
     fontSize: "1rem",
     outline: "none",
     backgroundColor: "var(--input-bg)",
-    color: "var(--text-primary)"
+    color: "var(--text-primary)",
+    width: "100%"
   },
   select: {
     border: "1px solid var(--input-border)",
@@ -358,7 +375,8 @@ export const styles = {
     padding: "0.65rem 0.9rem",
     fontSize: "1rem",
     backgroundColor: "var(--select-bg)",
-    color: "var(--text-primary)"
+    color: "var(--text-primary)",
+    width: "100%"
   },
   error: {
     margin: 0,
@@ -368,7 +386,8 @@ export const styles = {
   authNotice: {
     margin: 0,
     color: "var(--text-secondary)",
-    fontSize: "0.85rem"
+    fontSize: "0.85rem",
+    lineHeight: 1.45
   },
   preview: {
     margin: 0,
@@ -379,7 +398,7 @@ export const styles = {
     border: "1px solid var(--border)",
     borderRadius: "1.25rem",
     backgroundColor: "var(--result-bg)",
-    padding: "1.5rem",
+    padding: "clamp(1rem, 3vw, 1.5rem)",
     display: "flex",
     flexDirection: "column" as const,
     gap: "1rem"
@@ -400,7 +419,7 @@ export const styles = {
   },
   resultValue: {
     margin: 0,
-    fontSize: "1.4rem",
+    fontSize: "clamp(1.05rem, 4.8vw, 1.4rem)",
     fontWeight: 700,
     color: "var(--text-primary)"
   },
@@ -420,14 +439,16 @@ export const styles = {
   },
   breakdownItem: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "baseline",
     justifyContent: "space-between",
-    padding: "0.35rem 0"
+    padding: "0.35rem 0",
+    gap: "0.75rem",
+    flexWrap: "wrap" as const
   },
   historyBox: {
     border: "1px solid var(--border)",
     borderRadius: "1.25rem",
-    padding: "1.5rem",
+    padding: "clamp(1rem, 3vw, 1.5rem)",
     backgroundColor: "var(--card-bg)",
     display: "flex",
     flexDirection: "column" as const,
@@ -449,6 +470,8 @@ export const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    flexWrap: "wrap" as const,
+    gap: "0.6rem",
     padding: "0.75rem 1rem",
     border: "1px solid var(--border)",
     borderRadius: "0.9rem"
@@ -465,7 +488,7 @@ export const styles = {
   helpBox: {
     border: "1px solid var(--border)",
     borderRadius: "1.25rem",
-    padding: "1.5rem",
+    padding: "clamp(1rem, 3vw, 1.5rem)",
     backgroundColor: "var(--help-bg)",
     display: "flex",
     flexDirection: "column" as const,
@@ -486,11 +509,13 @@ export const styles = {
     marginTop: "0.5rem",
     borderTop: "1px solid var(--border-muted)",
     paddingTop: "0.75rem",
-    display: "flex",
-    justifyContent: "space-between",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))",
+    gap: "0.45rem",
     fontSize: "0.9rem"
   },
   navItem: {
-    fontWeight: 500
+    fontWeight: 500,
+    textAlign: "center" as const
   }
 } as const;
