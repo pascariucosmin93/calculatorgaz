@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
     const resetEmail = user.email ?? email;
 
-    await prisma.passwordResetToken.create({
+    const resetRequest = await prisma.passwordResetToken.create({
       data: {
         token,
         email: resetEmail,
@@ -60,12 +60,11 @@ export async function POST(request: Request) {
     let resetUrl = resetLinkBase;
     try {
       const url = new URL(resetLinkBase);
-      url.searchParams.set("token", token);
-      url.searchParams.set("email", resetEmail);
+      url.searchParams.set("rid", resetRequest.id);
       resetUrl = url.toString();
     } catch {
       const separator = resetLinkBase.includes("?") ? "&" : "?";
-      resetUrl = `${resetLinkBase}${separator}token=${token}&email=${encodeURIComponent(resetEmail)}`;
+      resetUrl = `${resetLinkBase}${separator}rid=${encodeURIComponent(resetRequest.id)}`;
     }
 
     if (process.env.DISCORD_RESET_WEBHOOK_URL) {

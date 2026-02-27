@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 function ResetPasswordContent() {
   const params = useSearchParams();
+  const resetId = params.get("rid") ?? "";
   const token = params.get("token") ?? "";
   const email = params.get("email") ?? "";
 
@@ -31,8 +32,8 @@ function ResetPasswordContent() {
     setError(null);
     setMessage(null);
 
-    if (!token || !email) {
-      setError("Link-ul de resetare este invalid sau incomplet.");
+    if (!resetId && (!token || !email)) {
+      setError("Link-ul de resetare este invalid sau expirat.");
       return;
     }
 
@@ -51,7 +52,7 @@ function ResetPasswordContent() {
       const response = await fetch("/api/auth/reset-password/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, email, password })
+        body: JSON.stringify({ resetId, token, email, password })
       });
 
       const data = (await response.json()) as { message?: string; error?: string };
@@ -79,21 +80,23 @@ function ResetPasswordContent() {
           <p style={styles.authNotice}>
             Introdu o parolă nouă pentru contul asociat emailului tău.
           </p>
-          {!token || !email ? (
+          {!resetId && (!token || !email) ? (
             <p style={styles.error}>
               Link-ul de resetare este invalid. Verifică dacă ai folosit link-ul corect din mesajul primit.
             </p>
           ) : (
             <form style={styles.authForm} onSubmit={handleSubmit}>
-              <label style={styles.label}>
-                Email
-                <input
-                  type="email"
-                  disabled
-                  value={emailLabel}
-                  style={{ ...styles.authInput, opacity: 0.8 }}
-                />
-              </label>
+              {emailLabel ? (
+                <label style={styles.label}>
+                  Email
+                  <input
+                    type="email"
+                    disabled
+                    value={emailLabel}
+                    style={{ ...styles.authInput, opacity: 0.8 }}
+                  />
+                </label>
+              ) : null}
               <label style={styles.label}>
                 Parolă nouă
                 <input

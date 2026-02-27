@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 type ConfirmPayload = {
+  resetId?: string;
   token?: string;
   email?: string;
   password?: string;
@@ -18,13 +19,14 @@ export async function POST(request: Request) {
       // Continue to validation
     }
 
+    const resetId = (payload?.resetId ?? "").trim();
     const token = (payload?.token ?? "").trim();
     const email = (payload?.email ?? "").trim().toLowerCase();
     const password = payload?.password ?? "";
 
-    if (!token || !email || !password) {
+    if (!password) {
       return NextResponse.json(
-        { error: "Tokenul, emailul și parola sunt obligatorii." },
+        { error: "Parola este obligatorie." },
         { status: 422 }
       );
     }
@@ -36,9 +38,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const storedToken = await prisma.passwordResetToken.findUnique({
-      where: { token }
-    });
+    const storedToken = resetId
+      ? await prisma.passwordResetToken.findUnique({ where: { id: resetId } })
+      : token
+        ? await prisma.passwordResetToken.findUnique({ where: { token } })
+        : null;
 
     if (!storedToken) {
       return NextResponse.json({ error: "Token invalid sau expirat." }, { status: 400 });
@@ -49,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tokenul a expirat. Trimite o nouă cerere." }, { status: 400 });
     }
 
-    if (storedToken.email.toLowerCase() !== email) {
+    if (!resetId && storedToken.email.toLowerCase() !== email) {
       return NextResponse.json({ error: "Emailul nu corespunde tokenului primit." }, { status: 400 });
     }
 
