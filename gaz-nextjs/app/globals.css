@@ -1,5 +1,5 @@
 :root {
-  --page-bg: linear-gradient(180deg, #ffd6d6, #ff9f9f);
+  --page-bg: linear-gradient(180deg, #f4f6ff, #eef2ff);
   --card-bg: #ffffff;
   --surface-card: #f8fafc;
   --surface-contrast: #f7f8fb;
@@ -22,7 +22,7 @@
 }
 
 [data-theme="dark"] {
-  --page-bg: linear-gradient(180deg, #5a0b0b, #2b0707);
+  --page-bg: linear-gradient(180deg, #0f172a, #020617);
   --card-bg: #0b1120;
   --surface-card: #111827;
   --surface-contrast: #0f172a;
