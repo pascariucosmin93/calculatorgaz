@@ -77,6 +77,9 @@ export default function Home() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceMessage, setInvoiceMessage] = useState("");
+  const [invoiceError, setInvoiceError] = useState("");
   const [profileOwnerName, setProfileOwnerName] = useState("");
   const [profileAddress, setProfileAddress] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
@@ -793,6 +796,67 @@ export default function Home() {
     [resetEmail]
   );
 
+  const handleInvoiceUpload = useCallback(
+    async (file: File, city: string) => {
+      if (!user?.id) {
+        setInvoiceError("Trebuie să fii autentificat ca să încarci factura.");
+        return;
+      }
+
+      setInvoiceLoading(true);
+      setInvoiceError("");
+      setInvoiceMessage("");
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("city", city);
+        form.append("userId", user.id);
+
+        const response = await fetch("/api/invoices/upload", {
+          method: "POST",
+          body: form
+        });
+        const data = (await response.json()) as {
+          error?: string;
+          message?: string;
+          city?: string;
+          profile?: {
+            pcs: number;
+            gasPriceMwh: number;
+            transportPriceMwh: number;
+            distributionPriceMwh: number;
+            cap26PriceMwh: number;
+            cap6PriceMwh: number;
+            fixedFee: number;
+            vatRate: number;
+          };
+        };
+
+        if (!response.ok || !data.profile) {
+          throw new Error(data.error || "Nu am putut procesa factura.");
+        }
+
+        setPcs(data.profile.pcs.toString());
+        setGasPriceMwh(data.profile.gasPriceMwh.toString());
+        setTransportPriceMwh(data.profile.transportPriceMwh.toString());
+        setDistributionPriceMwh(data.profile.distributionPriceMwh.toString());
+        setCap26PriceMwh(data.profile.cap26PriceMwh.toString());
+        setCap6PriceMwh(data.profile.cap6PriceMwh.toString());
+        setFixedFee(data.profile.fixedFee.toString());
+        setVatRate((data.profile.vatRate * 100).toString());
+        setInvoiceMessage(
+          data.message ??
+            `Factura a fost procesată. Tarif actualizat pentru ${data.city ?? "profil generic"}.`
+        );
+      } catch (error) {
+        setInvoiceError(error instanceof Error ? error.message : "Eroare la upload factură.");
+      } finally {
+        setInvoiceLoading(false);
+      }
+    },
+    [user?.id]
+  );
+
   const consumptionPreview = useMemo(() => {
     const current = parseFloat(currentReading);
     const previous = parseFloat(previousReading);
@@ -923,6 +987,9 @@ export default function Home() {
                 vatRate={vatRate}
                 fixedFee={fixedFee}
                 includeVat={includeVat}
+                invoiceLoading={invoiceLoading}
+                invoiceMessage={invoiceMessage}
+                invoiceError={invoiceError}
                 onPreviousReadingChange={handlePreviousReadingChange}
                 onPcsChange={handlePcsChange}
                 onGasPriceChange={handleGasPriceChange}
@@ -933,6 +1000,7 @@ export default function Home() {
                 onVatRateChange={handleVatRateChange}
                 onFixedFeeChange={handleFixedFeeChange}
                 onIncludeVatChange={handleIncludeVatChange}
+                onInvoiceUpload={handleInvoiceUpload}
               />
               <ResultSection
                 error={error}

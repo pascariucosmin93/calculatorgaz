@@ -75,8 +75,26 @@ spec:
               value: http://auth-service:8083
             - name: PASSWORD_RESET_SERVICE_URL
               value: http://password-reset-service:8086
+            - name: INVOICE_SERVICE_URL
+              value: http://invoice-service:8087
             - name: READING_SERVICE_URL
               value: http://reading-service:8084
+            - name: SEAWEED_S3_ENDPOINT
+              value: https://s3.devjobs.ro
+            - name: SEAWEED_S3_REGION
+              value: us-east-1
+            - name: SEAWEED_S3_BUCKET
+              value: facturi
+            - name: SEAWEED_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: calculatorgaz-secrets
+                  key: SEAWEED_S3_ACCESS_KEY
+            - name: SEAWEED_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: calculatorgaz-secrets
+                  key: SEAWEED_S3_SECRET_KEY
             - name: ADMIN_EMAIL
               value: admin@gmail.com
             - name: ADMIN_PASSWORD

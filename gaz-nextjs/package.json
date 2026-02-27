@@ -13,20 +13,21 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "bcryptjs": "2.4.3",
-    "next": "^15.0.0",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "tesseract.js": "5.0.5",
+    "@aws-sdk/client-s3": "^3.1000.0",
     "@prisma/client": "5.12.1",
+    "bcryptjs": "2.4.3",
     "chart.js": "4.4.2",
+    "next": "^15.0.0",
+    "prisma": "5.12.1",
+    "react": "18.2.0",
     "react-chartjs-2": "5.2.0",
-    "prisma": "5.12.1"
+    "react-dom": "18.2.0",
+    "tesseract.js": "5.0.5"
   },
   "devDependencies": {
-    "@types/node": "20.11.30",
     "@types/bcryptjs": "^2.4.2",
     "@types/jsonwebtoken": "^9.0.2",
+    "@types/node": "20.11.30",
     "@types/react": "18.2.66",
     "@types/react-dom": "18.2.22",
     "eslint": "^9.0.0",

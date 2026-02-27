@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import { styles } from "../styles";
 
 type Props = {
@@ -14,6 +14,9 @@ type Props = {
   vatRate: string;
   fixedFee: string;
   includeVat: boolean;
+  invoiceLoading: boolean;
+  invoiceMessage: string;
+  invoiceError: string;
   onPreviousReadingChange: (value: string) => void;
   onPcsChange: (value: string) => void;
   onGasPriceChange: (value: string) => void;
@@ -24,6 +27,7 @@ type Props = {
   onVatRateChange: (value: string) => void;
   onFixedFeeChange: (value: string) => void;
   onIncludeVatChange: (value: boolean) => void;
+  onInvoiceUpload: (file: File, city: string) => Promise<void>;
 };
 
 function SettingsFormComponent({
@@ -37,6 +41,9 @@ function SettingsFormComponent({
   vatRate,
   fixedFee,
   includeVat,
+  invoiceLoading,
+  invoiceMessage,
+  invoiceError,
   onPreviousReadingChange,
   onPcsChange,
   onGasPriceChange,
@@ -46,11 +53,56 @@ function SettingsFormComponent({
   onCap6PriceChange,
   onVatRateChange,
   onFixedFeeChange,
-  onIncludeVatChange
+  onIncludeVatChange,
+  onInvoiceUpload
 }: Props) {
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [invoiceCity, setInvoiceCity] = useState("auto");
+
+  const handleUpload = async () => {
+    if (!invoiceFile || invoiceLoading) {
+      return;
+    }
+    await onInvoiceUpload(invoiceFile, invoiceCity);
+    setInvoiceFile(null);
+  };
+
   return (
     <section style={styles.fieldGroup}>
       <h2 style={styles.sectionTitle}>Setări calculator</h2>
+      <div style={styles.formRow}>
+        <label style={styles.label}>
+          Factură gaz (PDF)
+          <input
+            type="file"
+            accept="application/pdf"
+            style={styles.input}
+            onChange={(event) => setInvoiceFile(event.target.files?.[0] ?? null)}
+          />
+        </label>
+        <label style={styles.label}>
+          Localitate factură
+          <select
+            style={styles.select}
+            value={invoiceCity}
+            onChange={(event) => setInvoiceCity(event.target.value)}
+          >
+            <option value="auto">Detectare automată</option>
+            <option value="bucuresti">București</option>
+            <option value="iasi">Iași</option>
+          </select>
+        </label>
+      </div>
+      <button
+        type="button"
+        style={styles.authSubmit}
+        onClick={handleUpload}
+        disabled={!invoiceFile || invoiceLoading}
+      >
+        {invoiceLoading ? "Se procesează factura..." : "Încarcă factura și aplică tarife"}
+      </button>
+      {invoiceMessage ? <p style={styles.success}>{invoiceMessage}</p> : null}
+      {invoiceError ? <p style={styles.error}>{invoiceError}</p> : null}
       <div style={styles.formRow}>
         <label style={styles.label}>
           Citirea anterioară (m³)
