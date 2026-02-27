@@ -66,7 +66,13 @@ jobs:
 
       - name: Login to private registry
         run: |
-          echo "$REGISTRY_PASSWORD" | docker login $REGISTRY -u $REGISTRY_USER --password-stdin
+          REGISTRY_USER_CLEAN="$(printf '%s' "$REGISTRY_USER" | tr -d '\r\n')"
+          REGISTRY_PASSWORD_CLEAN="$(printf '%s' "$REGISTRY_PASSWORD" | tr -d '\r\n')"
+          if [ -z "$REGISTRY_USER_CLEAN" ] || [ -z "$REGISTRY_PASSWORD_CLEAN" ]; then
+            echo "Registry credentials are empty. Check DOCKER_USER/DOCKER_PASSWORD secrets." >&2
+            exit 1
+          fi
+          printf '%s' "$REGISTRY_PASSWORD_CLEAN" | docker login "$REGISTRY" -u "$REGISTRY_USER_CLEAN" --password-stdin
 
       - name: Build image for kube
         run: |
