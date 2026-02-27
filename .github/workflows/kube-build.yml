@@ -12,8 +12,8 @@ permissions:
 env:
   REGISTRY: registry.infraejobs.ro
   IMAGE_NAME: infra/gaz/calculatorgaz
-  REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
-  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+  REGISTRY_USER: ${{ secrets.DOCKER_USER }}
+  REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
   SSH_JUMP_HOST: 10.13.13.100
   SSH_K8S_HOST: 192.168.70.3
 
