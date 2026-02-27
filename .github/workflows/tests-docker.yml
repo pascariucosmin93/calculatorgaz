@@ -1,0 +1,50 @@
+name: Tests (Docker Separate)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "gaz-nextjs/**"
+      - ".github/workflows/tests-docker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-docker-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests-docker:
+    runs-on: docker25
+    steps:
+      - name: Ensure Docker CLI is available
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y docker.io
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add docker docker-cli
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install docker CLI." >&2
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tests inside Docker
+        run: |
+          docker run --rm \
+            -v "$PWD/gaz-nextjs:/app" \
+            -w /app \
+            node:22.13.0-alpine \
+            sh -lc "npm ci --ignore-scripts && npm run test"

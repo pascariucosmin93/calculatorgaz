@@ -1,4 +1,4 @@
-name: PR Test (Docker)
+name: PR Docker Build
 
 on:
   pull_request:
@@ -26,31 +26,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  unit-tests:
-    runs-on: docker25
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.13.0"
-          cache: "npm"
-          cache-dependency-path: gaz-nextjs/package-lock.json
-
-      - name: Install test dependencies
-        run: |
-          cd gaz-nextjs
-          npm ci --ignore-scripts
-
-      - name: Run unit tests
-        run: |
-          cd gaz-nextjs
-          npm run test
-
   docker-build-test:
-    needs: unit-tests
     runs-on: docker25
     steps:
       - name: Ensure Docker CLI is available
