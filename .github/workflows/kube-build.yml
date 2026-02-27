@@ -66,8 +66,8 @@ jobs:
 
       - name: Login to private registry
         run: |
-          REGISTRY_USER_CLEAN="$(printf '%s' "$REGISTRY_USER" | tr -d '\r\n')"
-          REGISTRY_PASSWORD_CLEAN="$(printf '%s' "$REGISTRY_PASSWORD" | tr -d '\r\n')"
+          REGISTRY_USER_CLEAN="$(printf '%s' "$REGISTRY_USER" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^\"//' -e 's/\"$//' -e \"s/^'//\" -e \"s/'$//\")"
+          REGISTRY_PASSWORD_CLEAN="$(printf '%s' "$REGISTRY_PASSWORD" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^\"//' -e 's/\"$//' -e \"s/^'//\" -e \"s/'$//\")"
           if [ -z "$REGISTRY_USER_CLEAN" ] || [ -z "$REGISTRY_PASSWORD_CLEAN" ]; then
             echo "Registry credentials are empty. Check DOCKER_USER/DOCKER_PASSWORD secrets." >&2
             exit 1
