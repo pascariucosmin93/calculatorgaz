@@ -1,0 +1,66 @@
+name: PR Test (Docker)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "gaz-nextjs/**"
+      - ".github/workflows/pr-test.yml"
+      - ".github/workflows/kube-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build-test:
+    runs-on: docker25
+    steps:
+      - name: Ensure Docker CLI is available
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y docker.io
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add docker docker-cli
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install docker CLI." >&2
+          exit 1
+
+      - name: Ensure Node is available for JS actions
+        run: |
+          if command -v node >/dev/null 2>&1; then
+            exit 0
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y nodejs npm
+            exit 0
+          fi
+          if command -v apk >/dev/null 2>&1; then
+            apk update
+            apk add nodejs npm
+            exit 0
+          fi
+          echo "No package manager (apt/apk) available to install node." >&2
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image (PR validation only)
+        run: |
+          cd gaz-nextjs
+          docker build -t calculatorgaz:pr-${{ github.sha }} .
