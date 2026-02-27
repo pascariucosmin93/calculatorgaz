@@ -8,7 +8,7 @@ data:
     const http = require('http');
 
     const PORT = Number(process.env.PORT || 8084);
-    const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://calculatorgaz.gaz.svc.cluster.local').replace(/\/+$/, '');
+    const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://calculatorgaz').replace(/\/+$/, '');
 
     const readJson = (req) =>
       new Promise((resolve, reject) => {
@@ -104,7 +104,7 @@ spec:
             - name: PORT
               value: "8084"
             - name: APP_BASE_URL
-              value: http://calculatorgaz.gaz.svc.cluster.local
+              value: http://calculatorgaz
           ports:
             - containerPort: 8084
               name: http

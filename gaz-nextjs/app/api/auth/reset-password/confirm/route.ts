@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const AUTH_SERVICE_URL =
   process.env.AUTH_SERVICE_URL?.trim() ??
-  "http://auth-service.gaz.svc.cluster.local:8083";
+  "http://auth-service:8083";
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +11,7 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
+      signal: AbortSignal.timeout(10_000),
       cache: "no-store"
     });
 

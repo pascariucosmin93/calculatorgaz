@@ -1,6 +1,6 @@
 const NOTIFICATION_SERVICE_URL =
   process.env.NOTIFICATION_SERVICE_URL?.trim() ??
-  "http://notification-service.gaz.svc.cluster.local:8082";
+  "http://notification-service:8082";
 
 type NotificationPayload = {
   message: string;

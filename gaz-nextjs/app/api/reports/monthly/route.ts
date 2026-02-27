@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const REPORTING_SERVICE_URL =
   process.env.REPORTING_SERVICE_URL?.trim() ??
-  "http://reporting-service.gaz.svc.cluster.local:8081";
+  "http://reporting-service:8081";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

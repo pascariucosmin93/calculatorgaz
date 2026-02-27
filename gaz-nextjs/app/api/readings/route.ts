@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const READING_SERVICE_URL =
   process.env.READING_SERVICE_URL?.trim() ??
-  "http://reading-service.gaz.svc.cluster.local:8084";
+  "http://reading-service:8084";
 
 export async function GET(request: Request) {
   try {

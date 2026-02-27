@@ -58,15 +58,15 @@ spec:
             - name: DATABASE_URL
               value: postgresql://devops:devops@postgres.postgress.svc.cluster.local:5432/gaz
             - name: BILLING_SERVICE_URL
-              value: http://billing-service.gaz.svc.cluster.local:8080
+              value: http://billing-service:8080
             - name: REPORTING_SERVICE_URL
-              value: http://reporting-service.gaz.svc.cluster.local:8081
+              value: http://reporting-service:8081
             - name: NOTIFICATION_SERVICE_URL
-              value: http://notification-service.gaz.svc.cluster.local:8082
+              value: http://notification-service:8082
             - name: AUTH_SERVICE_URL
-              value: http://auth-service.gaz.svc.cluster.local:8083
+              value: http://auth-service:8083
             - name: READING_SERVICE_URL
-              value: http://reading-service.gaz.svc.cluster.local:8084
+              value: http://reading-service:8084
             - name: ADMIN_EMAIL
               value: admin@gmail.com
             - name: ADMIN_PASSWORD

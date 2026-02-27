@@ -8,7 +8,7 @@ data:
     const http = require('http');
 
     const PORT = Number(process.env.PORT || 8081);
-    const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://calculatorgaz.gaz.svc.cluster.local').replace(/\/+$/, '');
+    const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://calculatorgaz').replace(/\/+$/, '');
 
     const json = (res, code, payload) => {
       res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -200,7 +200,7 @@ spec:
             - name: PORT
               value: "8081"
             - name: APP_BASE_URL
-              value: http://calculatorgaz.gaz.svc.cluster.local
+              value: http://calculatorgaz
           ports:
             - containerPort: 8081
               name: http
