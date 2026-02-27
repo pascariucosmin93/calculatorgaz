@@ -66,3 +66,16 @@ Aplicație Next.js care calculează consumul și costul la gaz pe baza citirilor
 - `app/api/ocr/route.ts` – endpoint care rulează Tesseract pe imaginile trimise
 - `app/layout.tsx` și `app/globals.css` – layout-ul Next.js și stilurile globale
 - `Dockerfile` / `.dockerignore` – rulare containerizată
+
+## Smoke Tests In Cluster
+Pentru test rapid în Kubernetes, fără `kubectl exec ... node`:
+
+- notificare Discord:
+  ```bash
+  ./scripts/smoke-notify.sh gaz
+  ```
+
+- signup + citire nouă (trigger notificare automată):
+  ```bash
+  ./scripts/smoke-signup-reading.sh gaz
+  ```
