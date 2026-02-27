@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "gaz-nextjs/**"
+      - "k8s/**"
+      - "argocd/**"
       - ".github/workflows/pr-test.yml"
       - ".github/workflows/kube-build.yml"
   workflow_dispatch:
