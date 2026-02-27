@@ -6,7 +6,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
 
-const S3_ENDPOINT = process.env.SEAWEED_S3_ENDPOINT?.trim() || "https://s3.devjobs.ro";
+const S3_ENDPOINT = process.env.SEAWEED_S3_ENDPOINT?.trim() || "https://s3.galeata.devjobs.ro";
 const S3_REGION = process.env.SEAWEED_S3_REGION?.trim() || "us-east-1";
 const S3_BUCKET = process.env.SEAWEED_S3_BUCKET?.trim() || "facturi";
 const S3_ACCESS_KEY = process.env.SEAWEED_S3_ACCESS_KEY?.trim() || "";

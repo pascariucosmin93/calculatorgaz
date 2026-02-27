@@ -80,7 +80,7 @@ spec:
             - name: READING_SERVICE_URL
               value: http://reading-service:8084
             - name: SEAWEED_S3_ENDPOINT
-              value: https://s3.devjobs.ro
+              value: https://s3.galeata.devjobs.ro
             - name: SEAWEED_S3_REGION
               value: us-east-1
             - name: SEAWEED_S3_BUCKET
