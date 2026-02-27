@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { indexReadingDocument, isElasticConfigured } from "@/lib/elasticsearch";
+import { BillingInput, calculateBilling } from "@/lib/billing";
+import { calculateViaBillingService, isBillingServiceConfigured } from "@/lib/billing-client";
 
 type Payload = {
   userId: string;
@@ -117,42 +119,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Abonamentul nu poate fi negativ." }, { status: 422 });
   }
 
-  const consumptionM3 = currentReading - previousReading;
-  const consumptionKwh = consumptionM3 * pcs;
-  const consumptionMwh = consumptionKwh / 1000;
+  const billingInput: BillingInput = {
+    previousReading,
+    currentReading,
+    pcs,
+    gasPriceMwh,
+    transportPriceMwh,
+    distributionPriceMwh,
+    cap26PriceMwh,
+    cap6PriceMwh,
+    fixedFee,
+    vatRate,
+    includeVat
+  };
 
-  const gasCost = consumptionMwh * gasPriceMwh;
-  const transportCost = consumptionMwh * transportPriceMwh;
-  const distributionCost = consumptionMwh * distributionPriceMwh;
-  const cap26Cost = consumptionMwh * cap26PriceMwh;
-  const cap6Cost = consumptionMwh * cap6PriceMwh;
-
-  const baseCost = gasCost + transportCost + distributionCost;
-  const adjustmentCost = cap26Cost + cap6Cost;
-  const variableCost = baseCost + adjustmentCost;
-
-  const pricePerKwh = variableCost / consumptionKwh;
-  const pricePerM3 = variableCost / consumptionM3;
-  const subtotal = variableCost + fixedFee;
-  const vat = includeVat ? subtotal * vatRate : 0;
-  const total = subtotal + vat;
-  const pricePerKwhWithVat = includeVat ? pricePerKwh * (1 + vatRate) : pricePerKwh;
-  const pricePerM3WithVat = includeVat ? pricePerM3 * (1 + vatRate) : pricePerM3;
+  const bill = isBillingServiceConfigured()
+    ? await calculateViaBillingService(billingInput).catch((error) => {
+        console.error("Billing service unavailable, using local calculator", error);
+        return calculateBilling(billingInput);
+      })
+    : calculateBilling(billingInput);
 
   const entry = await prisma.reading.create({
     data: {
       previousReading,
       currentReading,
-      consumptionM3,
-      consumptionKwh,
-      pricePerKwh,
-      pricePerM3,
+      consumptionM3: bill.consumptionM3,
+      consumptionKwh: bill.consumptionKwh,
+      pricePerKwh: bill.pricePerKwh,
+      pricePerM3: bill.pricePerM3,
       conversionFactor: pcs,
       fixedFee,
       includeVat,
-      subtotal,
-      vat,
-      total,
+      subtotal: bill.subtotal,
+      vat: bill.vat,
+      total: bill.total,
       userId
     }
   });
@@ -164,9 +165,9 @@ export async function POST(request: Request) {
         userId,
         previousReading,
         currentReading,
-        consumptionM3,
-        consumptionKwh,
-        consumptionMwh,
+        consumptionM3: bill.consumptionM3,
+        consumptionKwh: bill.consumptionKwh,
+        consumptionMwh: bill.consumptionMwh,
         pcs,
         gasPriceMwh,
         transportPriceMwh,
@@ -176,9 +177,9 @@ export async function POST(request: Request) {
         fixedFee,
         includeVat,
         vatRate,
-        subtotal,
-        vat,
-        total,
+        subtotal: bill.subtotal,
+        vat: bill.vat,
+        total: bill.total,
         createdAt: entry.createdAt
       });
     } catch (error) {
@@ -189,21 +190,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       ...entry,
-      consumptionMwh,
-      pcs,
-      variableCost,
-      pricePerKwhWithVat,
-      pricePerM3WithVat,
-      baseCost,
-      adjustmentCost,
-      vatRate,
-      breakdown: {
-        gas: { unitPriceMwh: gasPriceMwh, value: gasCost },
-        transport: { unitPriceMwh: transportPriceMwh, value: transportCost },
-        distribution: { unitPriceMwh: distributionPriceMwh, value: distributionCost },
-        cap26: { unitPriceMwh: cap26PriceMwh, value: cap26Cost },
-        cap6: { unitPriceMwh: cap6PriceMwh, value: cap6Cost }
-      }
+      ...bill
     },
     { status: 201 }
   );
