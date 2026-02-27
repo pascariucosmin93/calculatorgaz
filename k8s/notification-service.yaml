@@ -108,6 +108,13 @@ spec:
                 secretKeyRef:
                   name: notification-service-secrets
                   key: DISCORD_WEBHOOK_URL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "300m"
+              memory: "192Mi"
           ports:
             - containerPort: 8082
               name: http

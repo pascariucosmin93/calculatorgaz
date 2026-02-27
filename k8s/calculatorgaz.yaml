@@ -50,6 +50,13 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
           env:
             - name: HOSTNAME
               value: 0.0.0.0
