@@ -86,6 +86,8 @@ spec:
               value: http://invoice-service:8087
             - name: READING_SERVICE_URL
               value: http://reading-service:8084
+            - name: SESSION_SERVICE_URL
+              value: http://session-service:8088
             - name: SEAWEED_S3_ENDPOINT
               value: https://s3.galeata.devjobs.ro
             - name: SEAWEED_S3_REGION

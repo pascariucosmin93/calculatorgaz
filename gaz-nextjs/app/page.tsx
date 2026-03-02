@@ -10,6 +10,7 @@ import { ResultSection } from "./components/ResultSection";
 import { HistorySection, ChartTheme } from "./components/HistorySection";
 import { HelpSection } from "./components/HelpSection";
 import { BottomNav } from "./components/BottomNav";
+import { CookieConsent, getCookieConsent } from "./components/CookieConsent";
 import { styles } from "./styles";
 import { AuthMode, AuthUser, HistoryEntry, HistoryStatus, Result, ThemeMode } from "@/lib/types";
 
@@ -141,21 +142,46 @@ export default function Home() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (!savedUser) {
-        return;
-      }
-      const parsed = JSON.parse(savedUser) as AuthUser;
-      if (parsed?.username) {
-        setUser(parsed);
-      }
-    } catch {
-      // Ignorăm datele corupte.
-    }
+    if (typeof window === "undefined") return;
+
+    // Try cookie-based session first
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.id && data?.username) {
+          const cookieUser: AuthUser = {
+            id: data.id,
+            username: data.username,
+            email: data.email ?? null,
+            ownerName: data.ownerName ?? null,
+            address: data.address ?? null,
+            createdAt: data.createdAt ?? new Date().toISOString()
+          };
+          setUser(cookieUser);
+          return;
+        }
+
+        // Fallback: localStorage
+        try {
+          const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+          if (!savedUser) return;
+          const parsed = JSON.parse(savedUser) as AuthUser;
+          if (parsed?.username) setUser(parsed);
+        } catch {
+          // Ignorăm datele corupte.
+        }
+      })
+      .catch(() => {
+        // Session service unavailable, fallback to localStorage
+        try {
+          const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+          if (!savedUser) return;
+          const parsed = JSON.parse(savedUser) as AuthUser;
+          if (parsed?.username) setUser(parsed);
+        } catch {
+          // Ignorăm datele corupte.
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -286,9 +312,15 @@ export default function Home() {
       const endpoint = authMode === "signup" ? "signup" : "login";
 
       try {
+        const consent = getCookieConsent();
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (consent === "accepted") {
+          headers["x-cookie-consent"] = "accepted";
+        }
+
         const response = await fetch(`/api/auth/${endpoint}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             username: authUsername,
             password: authPassword,
@@ -341,6 +373,7 @@ export default function Home() {
 
   const handleLogout = useCallback(() => {
     setUser(null);
+    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
   }, []);
 
   const handleProfileSubmit = useCallback(
@@ -892,6 +925,7 @@ export default function Home() {
 
   return (
     <main style={styles.page}>
+      <CookieConsent />
       <div style={styles.stack}>
         <AuthStatusCard
           user={user}
