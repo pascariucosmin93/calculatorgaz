@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: http://forgejo.forgejo.svc.cluster.local:3000/cosmin/gaz.git
+    repoURL: http://forgejo.forgejo.svc.cluster.local:3000/cosmin/gaz-gitops.git
     targetRevision: main
     path: k8s
   destination:

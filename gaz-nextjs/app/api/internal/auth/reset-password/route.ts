@@ -73,11 +73,11 @@ export async function POST(request: Request) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: `Resetare parolă pentru ${resetEmail}\nLink: ${resetUrl}\nExpiră la: ${expiresAt.toISOString()}`
+            content: `Resetare parolă solicitată pentru ${resetEmail}\nExpiră la: ${expiresAt.toISOString()}`
           })
         });
       } catch (error) {
-        console.error("Nu am putut trimite linkul pe Discord:", error);
+        console.error("Nu am putut trimite notificarea pe Discord:", error);
       }
     }
 

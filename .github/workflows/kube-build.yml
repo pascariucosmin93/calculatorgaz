@@ -14,8 +14,8 @@ env:
   IMAGE_NAME: infra/gaz/calculatorgaz
   REGISTRY_USER: ${{ secrets.DOCKER_USER }}
   REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-  SSH_JUMP_HOST: 10.13.13.100
-  SSH_K8S_HOST: 192.168.70.3
+  FORGEJO_URL: https://forgejo-kube.cosmin-lab.com
+  GITOPS_REPO: https://forgejo-kube.cosmin-lab.com/cosmin/gaz-gitops.git
 
 jobs:
   build-and-push:
@@ -62,18 +62,17 @@ jobs:
 
       - name: Set SHORT_SHA
         id: vars
-        run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+        run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-6)" >> $GITHUB_OUTPUT
 
       - name: Login to private registry
         run: |
           echo "$REGISTRY_PASSWORD" | docker login $REGISTRY -u $REGISTRY_USER --password-stdin
 
-      - name: Build image for kube
+      - name: Build image
         run: |
           cd gaz-nextjs
           IMAGE_REF="$REGISTRY/$IMAGE_NAME"
           docker build \
-            -t $IMAGE_REF:kube \
             -t $IMAGE_REF:${{ steps.vars.outputs.short_sha }} \
             .
 
@@ -89,14 +88,46 @@ jobs:
       #       --severity CRITICAL \
       #       --ignore-cve CVE-2023-45853 \
       #       --exit-code 1 \
-      #       $IMAGE_REF:kube
-
-      - name: Push kube tag
-        run: |
-          IMAGE_REF="$REGISTRY/$IMAGE_NAME"
-          docker push $IMAGE_REF:kube
+      #       $IMAGE_REF:${{ steps.vars.outputs.short_sha }}
 
       - name: Push commit tag
         run: |
           IMAGE_REF="$REGISTRY/$IMAGE_NAME"
           docker push $IMAGE_REF:${{ steps.vars.outputs.short_sha }}
+
+      - name: Update GitOps image tags
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          GITOPS_PUSH_USER: ${{ secrets.GITOPS_PUSH_USER }}
+          GITOPS_PUSH_TOKEN: ${{ secrets.GITOPS_PUSH_TOKEN }}
+        run: |
+          set -e
+          SHORT_SHA=$(echo "$COMMIT_SHA" | cut -c1-6)
+
+          if [ -z "${GITOPS_PUSH_USER:-}" ] || [ -z "${GITOPS_PUSH_TOKEN:-}" ]; then
+            echo "GITOPS_PUSH_USER / GITOPS_PUSH_TOKEN not set; skipping GitOps update."
+            exit 0
+          fi
+
+          AUTH_REPO=$(echo "$GITOPS_REPO" | sed "s#https://#https://${GITOPS_PUSH_USER}:${GITOPS_PUSH_TOKEN}@#")
+          WORKDIR=$(mktemp -d)
+          git clone "$AUTH_REPO" "$WORKDIR/gitops"
+          cd "$WORKDIR/gitops"
+
+          if [ ! -f k8s/kustomization.yaml ]; then
+            echo "k8s/kustomization.yaml not found in GitOps repo"
+            exit 1
+          fi
+
+          sed -i "/name: registry.infraejobs.ro\\/infra\\/gaz\\/calculatorgaz/{n;s/^[[:space:]]*newTag:.*/    newTag: \"$SHORT_SHA\"/;}" k8s/kustomization.yaml
+
+          if git diff --quiet; then
+            echo "GitOps repo already up-to-date"
+            exit 0
+          fi
+
+          git config user.name "Gaz CI Bot"
+          git config user.email "gaz-ci-bot@local"
+          git add k8s/kustomization.yaml
+          git commit -m "chore(gitops): update calculatorgaz image to $SHORT_SHA"
+          git push origin main
