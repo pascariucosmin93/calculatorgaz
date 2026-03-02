@@ -13,11 +13,29 @@ function getResetHost() {
 
 const RESET_HOST = getResetHost();
 
-export function middleware(request: NextRequest) {
-  const requestHost = (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
+function isInternalApiAuthorized(request: NextRequest): boolean {
+  const key = process.env.INTERNAL_API_KEY;
+  if (!key) {
+    // If key is not configured, deny all internal requests (fail-closed)
+    return false;
+  }
+  const provided = request.headers.get("x-internal-api-key") ?? "";
+  return provided.length > 0 && provided === key;
+}
 
-  const isResetDomain = requestHost === RESET_HOST;
+export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  // Block direct access to /api/internal/* without valid shared secret
+  if (pathname.startsWith("/api/internal")) {
+    if (!isInternalApiAuthorized(request)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
+
+  const requestHost = (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
+  const isResetDomain = requestHost === RESET_HOST;
 
   if (
     !isResetDomain ||

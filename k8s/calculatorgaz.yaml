@@ -102,6 +102,11 @@ spec:
                 secretKeyRef:
                   name: calculatorgaz-secrets
                   key: SEAWEED_S3_SECRET_KEY
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: calculatorgaz-secrets
+                  key: INTERNAL_API_KEY
             - name: ADMIN_EMAIL
               value: admin@gmail.com
             - name: ADMIN_PASSWORD
