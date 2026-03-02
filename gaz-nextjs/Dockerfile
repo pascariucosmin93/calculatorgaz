@@ -36,11 +36,16 @@ RUN apt-get update \
 RUN npm install -g "prisma@${PRISMA_VERSION}" --prefer-offline --no-audit --progress=false \
   && "${PRISMA_CLI_PATH}" --version
 
-COPY --from=builder /app/healthcheck.mjs ./healthcheck.mjs
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/.next/standalone ./
+RUN addgroup --system --gid 1001 appgroup \
+  && adduser --system --uid 1001 --ingroup appgroup appuser
+
+COPY --from=builder --chown=appuser:appgroup /app/healthcheck.mjs ./healthcheck.mjs
+COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
+COPY --from=builder --chown=appuser:appgroup /app/public ./public
+COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
+COPY --from=builder --chown=appuser:appgroup /app/.next/standalone ./
+
+USER appuser
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
