@@ -24,6 +24,27 @@ const DEFAULT_FIXED_FEE = 0;
 const DEFAULT_VAT_RATE = 0.21;
 const AUTH_STORAGE_KEY = "gaz-calculator:auth-user";
 const THEME_STORAGE_KEY = "gaz-calculator:theme";
+
+let csrfToken: string | null = null;
+
+async function ensureCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  try {
+    const res = await fetch("/api/auth/csrf");
+    if (res.ok) {
+      const data = await res.json();
+      csrfToken = data.csrfToken;
+      return csrfToken!;
+    }
+  } catch {
+    // CSRF service unavailable
+  }
+  return "";
+}
+
+function csrfHeaders(): Record<string, string> {
+  return csrfToken ? { "x-csrf-token": csrfToken } : {};
+}
 const METER_SERIAL = "00838754/2013";
 const NAV_ITEMS = ["Acasă", "Autocitire", "Facturi", "Consum", "Myline"];
 const DEFAULT_ADDRESS = "Adresa locului de consum nu este configurată pentru acest cont.";
@@ -143,6 +164,9 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Fetch CSRF token early
+    ensureCsrfToken().catch(() => {});
 
     // Try cookie-based session first
     fetch("/api/auth/me")
@@ -373,7 +397,7 @@ export default function Home() {
 
   const handleLogout = useCallback(() => {
     setUser(null);
-    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() }).catch(() => {});
   }, []);
 
   const handleProfileSubmit = useCallback(
@@ -391,7 +415,7 @@ export default function Home() {
       try {
         const response = await fetch("/api/auth/profile", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...csrfHeaders() },
           body: JSON.stringify({
             userId: user.id,
             ownerName: profileOwnerName,
@@ -454,7 +478,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/admin/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...csrfHeaders() },
         body: JSON.stringify({ email: user.email, password: adminPassword })
       });
 
@@ -508,9 +532,9 @@ export default function Home() {
       try {
         const response = await fetch("/api/admin/users", {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email, password: adminPassword, userId })
-      });
+          headers: { "Content-Type": "application/json", ...csrfHeaders() },
+          body: JSON.stringify({ email: user.email, password: adminPassword, userId })
+        });
 
         let data: any = null;
         try {
@@ -612,7 +636,7 @@ export default function Home() {
       try {
         const response = await fetch("/api/readings", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...csrfHeaders() },
           body: JSON.stringify({
             userId: user.id,
             previousReading: previous,
@@ -847,6 +871,7 @@ export default function Home() {
 
         const response = await fetch("/api/invoices/upload", {
           method: "POST",
+          headers: csrfHeaders(),
           body: form
         });
         const data = (await response.json()) as {
