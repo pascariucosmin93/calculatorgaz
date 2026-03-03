@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
@@ -11,12 +12,21 @@ type Payload = {
 const normalize = (value?: string | null) => (value ?? "").trim();
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "admin@gmail.com").toLowerCase();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin";
 
-const isAuthorized = (payload: Payload) => {
+// Hash the admin password once at startup so we never compare plaintext
+const ADMIN_PASSWORD_RAW = process.env.ADMIN_PASSWORD;
+let adminPasswordHash: string | null = null;
+
+if (ADMIN_PASSWORD_RAW && ADMIN_PASSWORD_RAW.length > 0) {
+  adminPasswordHash = bcrypt.hashSync(ADMIN_PASSWORD_RAW, 10);
+}
+
+const isAuthorized = async (payload: Payload): Promise<boolean> => {
+  if (!adminPasswordHash) return false;
   const email = normalize(payload.email).toLowerCase();
   const password = normalize(payload.password);
-  return email === ADMIN_EMAIL && password === ADMIN_PASSWORD;
+  if (email !== ADMIN_EMAIL) return false;
+  return bcrypt.compare(password, adminPasswordHash);
 };
 
 export async function POST(request: Request) {
@@ -28,7 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Body invalid." }, { status: 400 });
     }
 
-    if (!isAuthorized(payload)) {
+    if (!(await isAuthorized(payload))) {
       return NextResponse.json({ error: "Acces interzis." }, { status: 403 });
     }
 
@@ -60,7 +70,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Body invalid." }, { status: 400 });
     }
 
-    if (!isAuthorized(payload)) {
+    if (!(await isAuthorized(payload))) {
       return NextResponse.json({ error: "Acces interzis." }, { status: 403 });
     }
 
