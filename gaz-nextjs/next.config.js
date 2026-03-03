@@ -5,9 +5,7 @@ const nextConfig = {
     ignoreBuildErrors: false
   },
   output: "standalone",
-  experimental: {
-    serverComponentsExternalPackages: ["tesseract.js"]
-  }
+  serverExternalPackages: ["tesseract.js"]
 };
 
 module.exports = nextConfig;

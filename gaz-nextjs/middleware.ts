@@ -31,9 +31,9 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 // Cleanup stale entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
-  for (const [key, val] of rateLimitMap) {
+  rateLimitMap.forEach((val, key) => {
     if (val.resetAt <= now) rateLimitMap.delete(key);
-  }
+  });
 }, 300_000);
 
 function getClientIp(request: NextRequest): string {
