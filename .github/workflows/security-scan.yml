@@ -1,0 +1,214 @@
+name: Security Scanning (Dependencies & SAST)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "gaz-nextjs/**"
+      - ".github/workflows/security-scan.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "gaz-nextjs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-scan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  npm-audit:
+    name: NPM Audit (Dependencies)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "gaz-nextjs/package-lock.json"
+
+      - name: Install dependencies
+        working-directory: gaz-nextjs
+        run: npm ci --ignore-scripts
+
+      - name: Run npm audit
+        working-directory: gaz-nextjs
+        continue-on-error: true
+        run: |
+          echo "=== NPM Audit Results ==="
+          npm audit --json > npm-audit.json || true
+          npm audit --audit-level=moderate || true
+          cat npm-audit.json
+
+      - name: Upload npm audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: gaz-nextjs/npm-audit.json
+          retention-days: 30
+
+  semgrep-sast:
+    name: Semgrep SAST (Code Analysis)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep scan
+        working-directory: gaz-nextjs
+        continue-on-error: true
+        run: |
+          semgrep \
+            --config=p/security-audit \
+            --config=p/owasp-top-ten \
+            --config=p/typescript \
+            --json \
+            --output=semgrep-report.json \
+            . || true
+
+      - name: Display Semgrep results
+        working-directory: gaz-nextjs
+        if: always()
+        run: |
+          if [ -f semgrep-report.json ]; then
+            echo "=== Semgrep Findings ==="
+            cat semgrep-report.json | jq '.results | length' || echo "0 issues"
+          fi
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: gaz-nextjs/semgrep-report.json
+          retention-days: 30
+
+  trivy-filesystem:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasec/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "gaz-nextjs"
+          format: "sarif"
+          output: "trivy-filesystem.sarif"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload Trivy filesystem to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-filesystem.sarif
+          category: "trivy-filesystem"
+
+      - name: Upload Trivy filesystem artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-filesystem-report
+          path: trivy-filesystem.sarif
+          retention-days: 30
+
+  sbom-generation:
+    name: Generate SBOM (Syft)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          path: gaz-nextjs
+          format: spdx-json
+          output-file: sbom-spdx.json
+
+      - name: Generate SBOM (CycloneDX format)
+        uses: anchore/sbom-action@v0
+        with:
+          path: gaz-nextjs
+          format: cyclonedx-json
+          output-file: sbom-cyclonedx.json
+
+      - name: Upload SBOM artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-reports
+          path: |
+            sbom-spdx.json
+            sbom-cyclonedx.json
+          retention-days: 30
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "gaz-nextjs/package-lock.json"
+
+      - name: Install dependencies
+        working-directory: gaz-nextjs
+        run: npm ci --ignore-scripts
+
+      - name: Check licenses
+        working-directory: gaz-nextjs
+        continue-on-error: true
+        run: |
+          npm install -g license-checker
+          license-checker \
+            --json > licenses.json \
+            --onlyAllow "MIT,Apache-2.0,BSD,ISC,Apache-2.0,MPL-2.0" \
+            || true
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: gaz-nextjs/licenses.json
+          retention-days: 30
+
+  summary:
+    name: Security Summary
+    needs: [npm-audit, semgrep-sast, trivy-filesystem, sbom-generation, license-check]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+
+      - name: Create summary
+        run: |
+          echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ NPM Audit: [View Report](npm-audit-report/npm-audit.json)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Semgrep SAST: [View Report](semgrep-report/semgrep-report.json)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Trivy Filesystem: [View Report](trivy-filesystem-report/trivy-filesystem.sarif)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ SBOM Generated: SPDX & CycloneDX formats" >> $GITHUB_STEP_SUMMARY
+          echo "✅ License Check: [View Report](license-report/licenses.json)" >> $GITHUB_STEP_SUMMARY
