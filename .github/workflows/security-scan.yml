@@ -79,26 +79,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install jq and semgrep
+      - name: Install jq
         run: |
           if command -v apt-get &> /dev/null; then
-            apt-get update && apt-get install -y jq python3-pip
-            pip3 install semgrep
+            apt-get update && apt-get install -y jq
           elif command -v apk &> /dev/null; then
-            apk add --no-cache jq py3-pip
-            pip3 install semgrep
+            apk add --no-cache jq
           fi
 
-      - name: Run Semgrep scan
+      - name: Run Semgrep scan via Docker
         working-directory: gaz-nextjs
         run: |
-          semgrep \
+          docker run --rm \
+            -v $(pwd):/src \
+            semgrep/semgrep:latest \
+            semgrep \
             --config=p/security-audit \
             --config=p/owasp-top-ten \
             --config=p/typescript \
             --json \
-            --output=semgrep-report.json \
-            . || true
+            --output=/src/semgrep-report.json \
+            /src || true
 
       - name: Check Semgrep results for CRITICAL
         working-directory: gaz-nextjs
