@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload npm audit results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: npm-audit-report
           path: gaz-nextjs/npm-audit.json
@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload Semgrep results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: semgrep-report
           path: gaz-nextjs/semgrep-report.json
@@ -151,16 +151,9 @@ jobs:
           output: "trivy-filesystem.sarif"
           severity: "CRITICAL,HIGH"
 
-      - name: Upload Trivy filesystem to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-filesystem.sarif
-          category: "trivy-filesystem"
-
       - name: Upload Trivy filesystem artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: trivy-filesystem-report
           path: trivy-filesystem.sarif
@@ -189,7 +182,7 @@ jobs:
 
       - name: Upload SBOM artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: sbom-reports
           path: |
@@ -227,7 +220,7 @@ jobs:
 
       - name: Upload license report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: license-report
           path: gaz-nextjs/licenses.json
@@ -240,7 +233,7 @@ jobs:
     if: always()
     steps:
       - name: Download all reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
 
       - name: Create summary
         run: |
