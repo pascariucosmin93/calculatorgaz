@@ -69,8 +69,8 @@ const bannerStyle: React.CSSProperties = {
   left: 0,
   right: 0,
   zIndex: 9999,
-  background: "var(--card-bg, #fff)",
-  borderTop: "1px solid var(--border, #e2e8f0)",
+  background: "var(--card-bg)",
+  borderTop: "1px solid var(--border)",
   boxShadow: "0 -2px 12px rgba(0,0,0,0.12)",
   padding: "16px 20px"
 };
@@ -90,7 +90,7 @@ const textStyle: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
   lineHeight: 1.5,
-  color: "var(--text, #1e293b)"
+  color: "var(--text-primary)"
 };
 
 const buttonsStyle: React.CSSProperties = {
@@ -113,9 +113,9 @@ const acceptStyle: React.CSSProperties = {
 const refuseStyle: React.CSSProperties = {
   padding: "8px 20px",
   borderRadius: 6,
-  border: "1px solid var(--border, #cbd5e1)",
+  border: "1px solid var(--border)",
   background: "transparent",
-  color: "var(--text, #475569)",
+  color: "var(--text-secondary)",
   fontWeight: 500,
   fontSize: 14,
   cursor: "pointer"
