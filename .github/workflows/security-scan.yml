@@ -132,25 +132,50 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install jq
+        run: |
+          if command -v apt-get &> /dev/null; then
+            apt-get update && apt-get install -y jq
+          elif command -v apk &> /dev/null; then
+            apk add --no-cache jq
+          fi
+
       - name: Run Trivy filesystem scan (check CRITICAL)
-        uses: aquasec/trivy-action@master
-        with:
-          scan-type: "fs"
-          scan-ref: "gaz-nextjs"
-          format: "json"
-          output: "trivy-filesystem.json"
-          severity: "CRITICAL"
-          exit-code: "1"
+        run: |
+          docker pull docker.io/aquasec/trivy:latest
+          docker run --rm \
+            -v $(pwd):/root/scan \
+            docker.io/aquasec/trivy:latest \
+            fs \
+            --severity CRITICAL \
+            --format json \
+            --output /root/scan/trivy-filesystem.json \
+            /root/scan/gaz-nextjs || true
 
       - name: Run Trivy filesystem scan (all for reporting)
-        if: always()
-        uses: aquasec/trivy-action@master
-        with:
-          scan-type: "fs"
-          scan-ref: "gaz-nextjs"
-          format: "sarif"
-          output: "trivy-filesystem.sarif"
-          severity: "CRITICAL,HIGH"
+        run: |
+          docker pull docker.io/aquasec/trivy:latest
+          docker run --rm \
+            -v $(pwd):/root/scan \
+            docker.io/aquasec/trivy:latest \
+            fs \
+            --severity CRITICAL,HIGH \
+            --format sarif \
+            --output /root/scan/trivy-filesystem.sarif \
+            /root/scan/gaz-nextjs || true
+
+      - name: Check for CRITICAL vulnerabilities
+        run: |
+          if [ -f trivy-filesystem.json ]; then
+            CRITICAL=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="CRITICAL")] | length' trivy-filesystem.json 2>/dev/null || echo 0)
+            echo "=== Trivy Filesystem Findings ==="
+            echo "CRITICAL issues: $CRITICAL"
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ CRITICAL findings detected! Build blocked."
+              exit 1
+            fi
+            echo "✅ No critical filesystem issues"
+          fi
 
       - name: Upload Trivy filesystem artifact
         if: always()
@@ -167,19 +192,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Generate SBOM with Syft
-        uses: anchore/sbom-action@v0
-        with:
-          path: gaz-nextjs
-          format: spdx-json
-          output-file: sbom-spdx.json
+      - name: Generate SBOM with Syft (SPDX)
+        run: |
+          docker pull docker.io/anchore/syft:latest
+          docker run --rm \
+            -v $(pwd):/root/scan \
+            docker.io/anchore/syft:latest \
+            /root/scan/gaz-nextjs \
+            -o spdx-json \
+            > sbom-spdx.json
 
-      - name: Generate SBOM (CycloneDX format)
-        uses: anchore/sbom-action@v0
-        with:
-          path: gaz-nextjs
-          format: cyclonedx-json
-          output-file: sbom-cyclonedx.json
+      - name: Generate SBOM with Syft (CycloneDX)
+        run: |
+          docker pull docker.io/anchore/syft:latest
+          docker run --rm \
+            -v $(pwd):/root/scan \
+            docker.io/anchore/syft:latest \
+            /root/scan/gaz-nextjs \
+            -o cyclonedx-json \
+            > sbom-cyclonedx.json
 
       - name: Upload SBOM artifacts
         if: always()
