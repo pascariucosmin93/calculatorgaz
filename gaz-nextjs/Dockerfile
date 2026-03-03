@@ -26,10 +26,14 @@ RUN npm run build
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PRISMA_CLI_PATH=/usr/local/bin/prisma
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl \
   && apt-get upgrade -y \
   && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g "prisma@5.12.1" --prefer-offline --no-audit --progress=false \
+  && "${PRISMA_CLI_PATH}" --version
 
 RUN addgroup --system --gid 1001 appgroup \
   && adduser --system --uid 1001 --ingroup appgroup appuser
@@ -40,14 +44,9 @@ COPY --from=builder --chown=appuser:appgroup /app/public ./public
 COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
 COPY --from=builder --chown=appuser:appgroup /app/.next/standalone ./
 
-# Prisma CLI + engine AFTER standalone copy (standalone overwrites node_modules)
-COPY --from=deps /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
-COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
-
 USER appuser
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD ["node", "healthcheck.mjs"]
-CMD ["sh", "-c", "npx prisma migrate deploy && node --max-old-space-size=512 server.js"]
+CMD ["sh", "-c", "$PRISMA_CLI_PATH migrate deploy && node --max-old-space-size=512 server.js"]
