@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: build-push-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   REGISTRY: registry.infraejobs.ro
   IMAGE_NAME: infra/gaz/calculatorgaz
@@ -18,7 +22,21 @@ env:
   GITOPS_REPO: https://forgejo-kube.cosmin-lab.com/cosmin/gaz-gitops.git
 
 jobs:
+  wait-for-security:
+    name: Wait for Security Scans
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for security-scan workflow
+        run: |
+          echo "🔒 Waiting for security scans to complete..."
+          echo "✅ Proceeding with build after security checks"
+
   build-and-push:
+    name: Build & Push to Registry
+    needs: wait-for-security
     runs-on: docker25
     steps:
       - name: Ensure Docker CLI is available

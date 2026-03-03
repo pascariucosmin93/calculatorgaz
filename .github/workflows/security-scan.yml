@@ -43,12 +43,16 @@ jobs:
 
       - name: Run npm audit
         working-directory: gaz-nextjs
-        continue-on-error: true
         run: |
           echo "=== NPM Audit Results ==="
           npm audit --json > npm-audit.json || true
-          npm audit --audit-level=moderate || true
-          cat npm-audit.json
+          CRITICAL=$(jq '[.vulnerabilities[] | select(.severity=="critical")] | length' npm-audit.json)
+          echo "Critical vulnerabilities found: $CRITICAL"
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "❌ CRITICAL vulnerabilities detected! Build blocked."
+            exit 1
+          fi
+          echo "✅ No critical vulnerabilities"
 
       - name: Upload npm audit results
         if: always()
@@ -69,7 +73,6 @@ jobs:
 
       - name: Run Semgrep scan
         working-directory: gaz-nextjs
-        continue-on-error: true
         run: |
           semgrep \
             --config=p/security-audit \
@@ -79,13 +82,19 @@ jobs:
             --output=semgrep-report.json \
             . || true
 
-      - name: Display Semgrep results
+      - name: Check Semgrep results for CRITICAL
         working-directory: gaz-nextjs
-        if: always()
         run: |
           if [ -f semgrep-report.json ]; then
+            CRITICAL=$(jq '[.results[] | select(.extra.severity=="CRITICAL")] | length' semgrep-report.json)
             echo "=== Semgrep Findings ==="
-            cat semgrep-report.json | jq '.results | length' || echo "0 issues"
+            jq '.results | length' semgrep-report.json
+            echo "CRITICAL issues: $CRITICAL"
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ CRITICAL code issues found! Build blocked."
+              exit 1
+            fi
+            echo "✅ No critical code issues"
           fi
 
       - name: Upload Semgrep results
@@ -103,7 +112,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Trivy filesystem scan
+      - name: Run Trivy filesystem scan (check CRITICAL)
+        uses: aquasec/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "gaz-nextjs"
+          format: "json"
+          output: "trivy-filesystem.json"
+          severity: "CRITICAL"
+          exit-code: "1"
+
+      - name: Run Trivy filesystem scan (all for reporting)
+        if: always()
         uses: aquasec/trivy-action@master
         with:
           scan-type: "fs"
@@ -212,3 +232,22 @@ jobs:
           echo "✅ Trivy Filesystem: [View Report](trivy-filesystem-report/trivy-filesystem.sarif)" >> $GITHUB_STEP_SUMMARY
           echo "✅ SBOM Generated: SPDX & CycloneDX formats" >> $GITHUB_STEP_SUMMARY
           echo "✅ License Check: [View Report](license-report/licenses.json)" >> $GITHUB_STEP_SUMMARY
+
+  check-status:
+    name: Security Gate - Pass/Fail
+    needs: [npm-audit, semgrep-sast, trivy-filesystem, sbom-generation, license-check, summary]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check security job status
+        run: |
+          if [ "${{ needs.npm-audit.result }}" == "failure" ] || \
+             [ "${{ needs.semgrep-sast.result }}" == "failure" ] || \
+             [ "${{ needs.trivy-filesystem.result }}" == "failure" ] || \
+             [ "${{ needs.license-check.result }}" == "failure" ]; then
+            echo "❌ Security scanning found critical issues!"
+            echo "Review reports and fix before proceeding to build."
+            exit 1
+          fi
+          echo "✅ Security gates passed! Safe to build."
+          exit 0
