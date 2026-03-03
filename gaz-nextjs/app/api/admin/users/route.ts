@@ -11,7 +11,7 @@ type Payload = {
 
 const normalize = (value?: string | null) => (value ?? "").trim();
 
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "admin@gmail.com").toLowerCase();
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").toLowerCase();
 
 // Hash the admin password once at startup so we never compare plaintext
 const ADMIN_PASSWORD_RAW = process.env.ADMIN_PASSWORD;
@@ -22,7 +22,7 @@ if (ADMIN_PASSWORD_RAW && ADMIN_PASSWORD_RAW.length > 0) {
 }
 
 const isAuthorized = async (payload: Payload): Promise<boolean> => {
-  if (!adminPasswordHash) return false;
+  if (!adminPasswordHash || !ADMIN_EMAIL) return false;
   const email = normalize(payload.email).toLowerCase();
   const password = normalize(payload.password);
   if (email !== ADMIN_EMAIL) return false;

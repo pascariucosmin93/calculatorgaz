@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: `Auth service indisponibil: ${error instanceof Error ? error.message : "unknown"}` },
+      { error: "Serviciul de autentificare este momentan indisponibil." },
       { status: 502 }
     );
   }

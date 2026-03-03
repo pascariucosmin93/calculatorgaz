@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ previousReading, currentReading });
   } catch (error) {
     console.error(error);
-    const message = error instanceof Error ? error.message : "Eroare OCR neprevăzută.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("OCR error:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: "Eroare la procesarea imaginii." }, { status: 500 });
   }
 }

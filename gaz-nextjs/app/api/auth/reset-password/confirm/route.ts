@@ -25,11 +25,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      {
-        error: `Password reset service indisponibil: ${
-          error instanceof Error ? error.message : "unknown"
-        }`
-      },
+      { error: "Serviciul de resetare a parolei este momentan indisponibil." },
       { status: 502 }
     );
   }

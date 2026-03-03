@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const text = await response.text();
     if (!response.ok) {
       return NextResponse.json(
-        { error: `Reporting service error (${response.status}): ${text}` },
+        { error: "Serviciul de rapoarte este momentan indisponibil." },
         { status: 502 }
       );
     }
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: `Nu pot contacta reporting-service: ${error instanceof Error ? error.message : "unknown"}` },
+      { error: "Serviciul de rapoarte este momentan indisponibil." },
       { status: 502 }
     );
   }

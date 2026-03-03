@@ -35,9 +35,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Introdu o adresă de email validă." }, { status: 422 });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: "Parola trebuie să aibă cel puțin 6 caractere." },
+        { error: "Parola trebuie să aibă cel puțin 8 caractere." },
+        { status: 422 }
+      );
+    }
+
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return NextResponse.json(
+        { error: "Parola trebuie să conțină cel puțin o literă și o cifră." },
         { status: 422 }
       );
     }
