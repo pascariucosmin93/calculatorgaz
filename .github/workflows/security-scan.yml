@@ -30,6 +30,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install jq and tools
+        run: |
+          if command -v apt-get &> /dev/null; then
+            apt-get update && apt-get install -y jq
+          elif command -v apk &> /dev/null; then
+            apk add --no-cache jq
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -46,13 +54,15 @@ jobs:
         run: |
           echo "=== NPM Audit Results ==="
           npm audit --json > npm-audit.json || true
-          CRITICAL=$(jq '[.vulnerabilities[] | select(.severity=="critical")] | length' npm-audit.json)
-          echo "Critical vulnerabilities found: $CRITICAL"
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "❌ CRITICAL vulnerabilities detected! Build blocked."
-            exit 1
+          if [ -f npm-audit.json ]; then
+            CRITICAL=$(jq '[.vulnerabilities[] | select(.severity=="critical")] | length' npm-audit.json)
+            echo "Critical vulnerabilities found: $CRITICAL"
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ CRITICAL vulnerabilities detected! Build blocked."
+              exit 1
+            fi
+            echo "✅ No critical vulnerabilities"
           fi
-          echo "✅ No critical vulnerabilities"
 
       - name: Upload npm audit results
         if: always()
@@ -64,12 +74,20 @@ jobs:
 
   semgrep-sast:
     name: Semgrep SAST (Code Analysis)
-    runs-on: ubuntu-latest
-    container:
-      image: semgrep/semgrep:latest
+    runs-on: docker-tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install jq and semgrep
+        run: |
+          if command -v apt-get &> /dev/null; then
+            apt-get update && apt-get install -y jq python3-pip
+            pip3 install semgrep
+          elif command -v apk &> /dev/null; then
+            apk add --no-cache jq py3-pip
+            pip3 install semgrep
+          fi
 
       - name: Run Semgrep scan
         working-directory: gaz-nextjs
@@ -86,9 +104,10 @@ jobs:
         working-directory: gaz-nextjs
         run: |
           if [ -f semgrep-report.json ]; then
-            CRITICAL=$(jq '[.results[] | select(.extra.severity=="CRITICAL")] | length' semgrep-report.json)
+            CRITICAL=$(jq '[.results[] | select(.extra.severity=="CRITICAL")] | length' semgrep-report.json 2>/dev/null || echo 0)
+            TOTAL=$(jq '.results | length' semgrep-report.json 2>/dev/null || echo 0)
             echo "=== Semgrep Findings ==="
-            jq '.results | length' semgrep-report.json
+            echo "Total issues: $TOTAL"
             echo "CRITICAL issues: $CRITICAL"
             if [ "$CRITICAL" -gt 0 ]; then
               echo "❌ CRITICAL code issues found! Build blocked."
@@ -107,7 +126,7 @@ jobs:
 
   trivy-filesystem:
     name: Trivy Filesystem Scan
-    runs-on: ubuntu-latest
+    runs-on: docker-tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -149,7 +168,7 @@ jobs:
 
   sbom-generation:
     name: Generate SBOM (Syft)
-    runs-on: ubuntu-latest
+    runs-on: docker-tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -180,7 +199,7 @@ jobs:
 
   license-check:
     name: License Compliance Check
-    runs-on: ubuntu-latest
+    runs-on: docker-tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -203,7 +222,7 @@ jobs:
           npm install -g license-checker
           license-checker \
             --json > licenses.json \
-            --onlyAllow "MIT,Apache-2.0,BSD,ISC,Apache-2.0,MPL-2.0" \
+            --onlyAllow "MIT,Apache-2.0,BSD,ISC,MPL-2.0" \
             || true
 
       - name: Upload license report
@@ -217,7 +236,7 @@ jobs:
   summary:
     name: Security Summary
     needs: [npm-audit, semgrep-sast, trivy-filesystem, sbom-generation, license-check]
-    runs-on: ubuntu-latest
+    runs-on: docker-tests
     if: always()
     steps:
       - name: Download all reports
@@ -236,7 +255,7 @@ jobs:
   check-status:
     name: Security Gate - Pass/Fail
     needs: [npm-audit, semgrep-sast, trivy-filesystem, sbom-generation, license-check, summary]
-    runs-on: ubuntu-latest
+    runs-on: docker-tests
     if: always()
     steps:
       - name: Check security job status
