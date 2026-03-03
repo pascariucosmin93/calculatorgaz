@@ -70,7 +70,6 @@ export const styles = {
     width: "100%"
   },
   authSubmit: {
-    border: "none",
     backgroundColor: "#d1081f",
     color: "#fff",
     borderRadius: "0.85rem",
@@ -297,24 +296,12 @@ export const styles = {
     color: "var(--text-primary)",
     width: "100%"
   },
-  label: {
-    display: "block",
-    fontSize: "0.9rem",
-    color: "var(--text-secondary)",
-    marginBottom: 6
-  },
-  error: {
-    color: "#ef4444",
-    margin: 0,
-    padding: 0
-  },
   success: {
     color: "#22c55e",
     margin: 0,
     fontWeight: 600
   },
   submitButton: {
-    border: "none",
     backgroundColor: "#d1081f",
     color: "#fff",
     borderRadius: "999px",
