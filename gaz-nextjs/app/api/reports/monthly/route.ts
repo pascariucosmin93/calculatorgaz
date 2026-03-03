@@ -1,21 +1,27 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { verifySession, isErrorResponse } from "@/lib/auth";
 
 const REPORTING_SERVICE_URL =
   process.env.REPORTING_SERVICE_URL?.trim() ??
   "http://reporting-service:8081";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const session = await verifySession(request);
+  if (isErrorResponse(session)) return session;
+
   const url = new URL(request.url);
   const userId = url.searchParams.get("userId")?.trim() ?? "";
 
-  if (!userId) {
-    return NextResponse.json({ error: "Lipsește userId." }, { status: 400 });
+  if (userId && userId !== session.id) {
+    return NextResponse.json({ error: "Acces interzis." }, { status: 403 });
   }
+
+  const targetUserId = userId || session.id;
 
   try {
     const response = await fetch(
-      `${REPORTING_SERVICE_URL.replace(/\/+$/, "")}/report/monthly?userId=${encodeURIComponent(userId)}`,
-      { cache: "no-store" }
+      `${REPORTING_SERVICE_URL.replace(/\/+$/, "")}/report/monthly?userId=${encodeURIComponent(targetUserId)}`,
+      { cache: "no-store", signal: AbortSignal.timeout(10_000) }
     );
 
     const text = await response.text();

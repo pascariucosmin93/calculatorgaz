@@ -34,10 +34,9 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "Nu am găsit niciun cont cu acest email sau utilizator." },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        message: "Dacă există un cont cu acest email, vei primi instrucțiunile pentru resetarea parolei."
+      });
     }
 
     await prisma.passwordResetToken.deleteMany({
@@ -74,7 +73,8 @@ export async function POST(request: Request) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             content: `Resetare parolă solicitată pentru ${resetEmail}\nExpiră la: ${expiresAt.toISOString()}`
-          })
+          }),
+          signal: AbortSignal.timeout(5_000)
         });
       } catch (error) {
         console.error("Nu am putut trimite notificarea pe Discord:", error);
@@ -82,10 +82,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: "Ți-am trimis instrucțiunile pentru resetarea parolei.",
-      resetUrl,
-      resetPage: resetUrl,
-      expiresAt: expiresAt.toISOString()
+      message: "Dacă există un cont cu acest email, vei primi instrucțiunile pentru resetarea parolei."
     });
   } catch (err) {
     console.error("/api/auth/reset-password error:", err);

@@ -1,12 +1,8 @@
-import { NextResponse } from "next/server";
-import Tesseract from "tesseract.js";
+import { NextRequest, NextResponse } from "next/server";
+import { verifySession, isErrorResponse } from "@/lib/auth";
+import { recognizeDigits } from "@/lib/ocr-worker";
 
-const whitelist = "0123456789"; // doar cifre, fără puncte
-
-async function fileToBuffer(file: File) {
-  const arrayBuffer = await file.arrayBuffer();
-  return Buffer.from(arrayBuffer);
-}
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 /**
  * Extrage numai indexul contorului
@@ -18,32 +14,21 @@ async function fileToBuffer(file: File) {
 function extractNumber(rawText: string) {
   if (!rawText) return null;
 
-  // extrage toate secvențele de cifre consecutive
   const matches = rawText.match(/\d{4,7}/g);
+  if (!matches || matches.length === 0) return null;
 
-  if (!matches || matches.length === 0) {
-    return null;
-  }
-
-  // întâi căutăm secvențele de 5–6 cifre (index contor)
   const likely = matches.find(seq => seq.length === 5 || seq.length === 6);
-
-  if (likely) {
-    return parseInt(likely, 10);
-  }
-
-  // fallback: prima secvență mare
-  return parseInt(matches[0], 10);
+  return likely ? parseInt(likely, 10) : parseInt(matches[0], 10);
 }
 
 async function readMeterValue(file: File) {
-  const buffer = await fileToBuffer(file);
+  if (file.size > MAX_IMAGE_SIZE) {
+    throw new Error(`Imaginea depășește limita de ${MAX_IMAGE_SIZE / 1024 / 1024} MB.`);
+  }
 
-  const { data } = await Tesseract.recognize(buffer, "eng", {
-    tessedit_char_whitelist: whitelist
-  } as any);
-
-  const value = extractNumber(data.text);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const text = await recognizeDigits(buffer);
+  const value = extractNumber(text);
 
   if (value === null) {
     throw new Error("Nu am reușit să detectez cifre clare în imagine.");
@@ -52,7 +37,10 @@ async function readMeterValue(file: File) {
   return value;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const session = await verifySession(request);
+  if (isErrorResponse(session)) return session;
+
   const formData = await request.formData();
   const previousImage = formData.get("previous");
   const currentImage = formData.get("current");
@@ -65,14 +53,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [previousReading, currentReading] = await Promise.all([
-      readMeterValue(previousImage),
-      readMeterValue(currentImage)
-    ]);
+    // Sequential OCR through the shared worker (no parallel WASM spawning)
+    const previousReading = await readMeterValue(previousImage);
+    const currentReading = await readMeterValue(currentImage);
 
     return NextResponse.json({ previousReading, currentReading });
   } catch (error) {
-    console.error(error);
     console.error("OCR error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "Eroare la procesarea imaginii." }, { status: 500 });
   }

@@ -7,7 +7,12 @@ import { ProfileForm } from "./components/ProfileForm";
 import { ReadingSection } from "./components/ReadingSection";
 import { SettingsForm } from "./components/SettingsForm";
 import { ResultSection } from "./components/ResultSection";
-import { HistorySection, ChartTheme } from "./components/HistorySection";
+import dynamic from "next/dynamic";
+import type { ChartTheme } from "./components/HistorySection";
+const HistorySection = dynamic(
+  () => import("./components/HistorySection").then((mod) => mod.HistorySection),
+  { ssr: false }
+);
 import { HelpSection } from "./components/HelpSection";
 import { BottomNav } from "./components/BottomNav";
 import { CookieConsent, getCookieConsent } from "./components/CookieConsent";

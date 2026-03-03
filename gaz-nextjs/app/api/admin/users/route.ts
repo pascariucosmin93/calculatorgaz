@@ -13,20 +13,30 @@ const normalize = (value?: string | null) => (value ?? "").trim();
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").toLowerCase();
 
-// Hash the admin password once at startup so we never compare plaintext
+// Hash the admin password lazily on first use (async, non-blocking)
 const ADMIN_PASSWORD_RAW = process.env.ADMIN_PASSWORD;
 let adminPasswordHash: string | null = null;
+let hashPromise: Promise<string> | null = null;
 
-if (ADMIN_PASSWORD_RAW && ADMIN_PASSWORD_RAW.length > 0) {
-  adminPasswordHash = bcrypt.hashSync(ADMIN_PASSWORD_RAW, 10);
+function getAdminHash(): Promise<string> | null {
+  if (adminPasswordHash) return Promise.resolve(adminPasswordHash);
+  if (hashPromise) return hashPromise;
+  if (!ADMIN_PASSWORD_RAW || ADMIN_PASSWORD_RAW.length === 0) return null;
+
+  hashPromise = bcrypt.hash(ADMIN_PASSWORD_RAW, 10).then((hash) => {
+    adminPasswordHash = hash;
+    return hash;
+  });
+  return hashPromise;
 }
 
 const isAuthorized = async (payload: Payload): Promise<boolean> => {
-  if (!adminPasswordHash || !ADMIN_EMAIL) return false;
+  const hash = await getAdminHash();
+  if (!hash || !ADMIN_EMAIL) return false;
   const email = normalize(payload.email).toLowerCase();
   const password = normalize(payload.password);
   if (email !== ADMIN_EMAIL) return false;
-  return bcrypt.compare(password, adminPasswordHash);
+  return bcrypt.compare(password, hash);
 };
 
 export async function POST(request: Request) {
