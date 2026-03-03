@@ -31,10 +31,6 @@ RUN apt-get update \
   && apt-get upgrade -y \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=deps /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
-COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
-
 RUN addgroup --system --gid 1001 appgroup \
   && adduser --system --uid 1001 --ingroup appgroup appuser
 
@@ -43,6 +39,11 @@ COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
 COPY --from=builder --chown=appuser:appgroup /app/public ./public
 COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
 COPY --from=builder --chown=appuser:appgroup /app/.next/standalone ./
+
+# Prisma CLI + engine AFTER standalone copy (standalone overwrites node_modules)
+COPY --from=deps /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
+COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
 
 USER appuser
 
