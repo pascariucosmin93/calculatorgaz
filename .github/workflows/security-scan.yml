@@ -132,37 +132,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install jq
+      - name: Install Trivy and jq
         run: |
           if command -v apt-get &> /dev/null; then
-            apt-get update && apt-get install -y jq
+            apt-get update && apt-get install -y jq wget apt-transport-https gnupg lsb-release
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -
+            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/trivy.list
+            apt-get update && apt-get install -y trivy
           elif command -v apk &> /dev/null; then
-            apk add --no-cache jq
+            apk add --no-cache jq curl
+            curl -sSL https://github.com/aquasecurity/trivy/releases/download/v0.56.2/trivy_0.56.2_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
           fi
 
       - name: Run Trivy filesystem scan (check CRITICAL)
         run: |
-          docker pull docker.io/aquasec/trivy:latest
-          docker run --rm \
-            -v $(pwd):/root/scan \
-            docker.io/aquasec/trivy:latest \
-            fs \
+          trivy fs \
             --severity CRITICAL \
             --format json \
-            --output /root/scan/trivy-filesystem.json \
-            /root/scan/gaz-nextjs || true
+            --output trivy-filesystem.json \
+            gaz-nextjs || true
 
       - name: Run Trivy filesystem scan (all for reporting)
         run: |
-          docker pull docker.io/aquasec/trivy:latest
-          docker run --rm \
-            -v $(pwd):/root/scan \
-            docker.io/aquasec/trivy:latest \
-            fs \
+          trivy fs \
             --severity CRITICAL,HIGH \
             --format sarif \
-            --output /root/scan/trivy-filesystem.sarif \
-            /root/scan/gaz-nextjs || true
+            --output trivy-filesystem.sarif \
+            gaz-nextjs || true
 
       - name: Check for CRITICAL vulnerabilities
         run: |
@@ -192,25 +188,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Syft
+        run: |
+          if command -v apt-get &> /dev/null; then
+            apt-get update && apt-get install -y curl
+            curl -sSL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          elif command -v apk &> /dev/null; then
+            apk add --no-cache curl
+            curl -sSL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          fi
+
       - name: Generate SBOM with Syft (SPDX)
         run: |
-          docker pull docker.io/anchore/syft:latest
-          docker run --rm \
-            -v $(pwd):/root/scan \
-            docker.io/anchore/syft:latest \
-            /root/scan/gaz-nextjs \
-            -o spdx-json \
-            > sbom-spdx.json
+          syft gaz-nextjs -o spdx-json > sbom-spdx.json || true
 
       - name: Generate SBOM with Syft (CycloneDX)
         run: |
-          docker pull docker.io/anchore/syft:latest
-          docker run --rm \
-            -v $(pwd):/root/scan \
-            docker.io/anchore/syft:latest \
-            /root/scan/gaz-nextjs \
-            -o cyclonedx-json \
-            > sbom-cyclonedx.json
+          syft gaz-nextjs -o cyclonedx-json > sbom-cyclonedx.json || true
 
       - name: Upload SBOM artifacts
         if: always()
