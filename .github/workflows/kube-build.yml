@@ -24,7 +24,7 @@ env:
 jobs:
   wait-for-security:
     name: Wait for Security Scans
-    runs-on: ubuntu-latest
+    runs-on: docker25
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
