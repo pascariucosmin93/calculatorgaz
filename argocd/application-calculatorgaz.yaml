@@ -8,7 +8,11 @@ spec:
   source:
     repoURL: http://forgejo.forgejo.svc.cluster.local:3000/cosmin/gaz-gitops.git
     targetRevision: main
-    path: k8s
+    path: k8s/chart
+    helm:
+      releaseName: gaz
+      valueFiles:
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: gaz

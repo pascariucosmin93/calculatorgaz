@@ -114,12 +114,12 @@ jobs:
           git clone "$AUTH_REPO" "$WORKDIR/gitops"
           cd "$WORKDIR/gitops"
 
-          if [ ! -f k8s/kustomization.yaml ]; then
-            echo "k8s/kustomization.yaml not found in GitOps repo"
+          if [ ! -f k8s/chart/values.yaml ]; then
+            echo "k8s/chart/values.yaml not found in GitOps repo"
             exit 1
           fi
 
-          sed -i "/name: registry.infraejobs.ro\\/infra\\/gaz\\/calculatorgaz/{n;s/^[[:space:]]*newTag:.*/    newTag: \"$SHORT_SHA\"/;}" k8s/kustomization.yaml
+          sed -i "s|^\(\s*tag:\s*\)\".*\"|\1\"$SHORT_SHA\"|" k8s/chart/values.yaml
 
           if git diff --quiet; then
             echo "GitOps repo already up-to-date"
@@ -128,6 +128,6 @@ jobs:
 
           git config user.name "Gaz CI Bot"
           git config user.email "gaz-ci-bot@local"
-          git add k8s/kustomization.yaml
+          git add k8s/chart/values.yaml
           git commit -m "chore(gitops): update calculatorgaz image to $SHORT_SHA"
           git push origin main
