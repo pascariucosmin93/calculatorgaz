@@ -10,6 +10,9 @@ type Payload = {
 };
 
 const sanitize = (value: string) => value.trim();
+const USERNAME_MAX_LENGTH = 32;
+const EMAIL_MAX_LENGTH = 254;
+const PASSWORD_MAX_LENGTH = 128;
 
 export async function POST(request: Request) {
   try {
@@ -30,14 +33,32 @@ export async function POST(request: Request) {
         { status: 422 }
       );
     }
+    if (username.length > USERNAME_MAX_LENGTH) {
+      return NextResponse.json(
+        { error: `Numele de utilizator poate avea maximum ${USERNAME_MAX_LENGTH} caractere.` },
+        { status: 422 }
+      );
+    }
 
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return NextResponse.json({ error: "Introdu o adresă de email validă." }, { status: 422 });
+    }
+    if (email.length > EMAIL_MAX_LENGTH) {
+      return NextResponse.json(
+        { error: `Emailul poate avea maximum ${EMAIL_MAX_LENGTH} caractere.` },
+        { status: 422 }
+      );
     }
 
     if (password.length < 8) {
       return NextResponse.json(
         { error: "Parola trebuie să aibă cel puțin 8 caractere." },
+        { status: 422 }
+      );
+    }
+    if (password.length > PASSWORD_MAX_LENGTH) {
+      return NextResponse.json(
+        { error: `Parola poate avea maximum ${PASSWORD_MAX_LENGTH} caractere.` },
         { status: 422 }
       );
     }

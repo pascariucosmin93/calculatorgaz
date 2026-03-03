@@ -1,12 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { isErrorResponse, verifySession } from "@/lib/auth";
 
 const AUTH_SERVICE_URL =
   process.env.AUTH_SERVICE_URL?.trim() ??
   "http://auth-service:8083";
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
+  const session = await verifySession(request);
+  if (isErrorResponse(session)) return session;
+
+  let payload: Record<string, unknown>;
   try {
-    const body = await request.text();
+    payload = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Body invalid." }, { status: 400 });
+  }
+
+  try {
+    const body = JSON.stringify({ ...payload, userId: session.id });
     const response = await fetch(`${AUTH_SERVICE_URL.replace(/\/+$/, "")}/auth/profile`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -27,7 +27,6 @@ const DEFAULT_CAP26_PRICE_MWH = -20.54;
 const DEFAULT_CAP6_PRICE_MWH = -0.063;
 const DEFAULT_FIXED_FEE = 0;
 const DEFAULT_VAT_RATE = 0.21;
-const AUTH_STORAGE_KEY = "gaz-calculator:auth-user";
 const THEME_STORAGE_KEY = "gaz-calculator:theme";
 
 let csrfToken: string | null = null;
@@ -112,7 +111,8 @@ export default function Home() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
+  const [adminAuthPassword, setAdminAuthPassword] = useState("");
+  const [adminSessionActive, setAdminSessionActive] = useState(false);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState("");
@@ -154,7 +154,7 @@ export default function Home() {
 
     setHistoryStatus("loading");
     try {
-      const res = await fetch(`/api/readings?userId=${encodeURIComponent(user.id)}`);
+      const res = await fetch("/api/readings");
       if (!res.ok) {
         throw new Error("Nu am putut încărca istoricul.");
       }
@@ -187,42 +187,10 @@ export default function Home() {
             createdAt: data.createdAt ?? new Date().toISOString()
           };
           setUser(cookieUser);
-          return;
-        }
-
-        // Fallback: localStorage
-        try {
-          const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-          if (!savedUser) return;
-          const parsed = JSON.parse(savedUser) as AuthUser;
-          if (parsed?.username) setUser(parsed);
-        } catch {
-          // Ignorăm datele corupte.
         }
       })
-      .catch(() => {
-        // Session service unavailable, fallback to localStorage
-        try {
-          const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-          if (!savedUser) return;
-          const parsed = JSON.parse(savedUser) as AuthUser;
-          if (parsed?.username) setUser(parsed);
-        } catch {
-          // Ignorăm datele corupte.
-        }
-      });
+      .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    if (user) {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
-  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -230,7 +198,8 @@ export default function Home() {
       setProfileAddress("");
       setProfileError("");
       setProfileSuccess("");
-      setAdminPassword("");
+      setAdminAuthPassword("");
+      setAdminSessionActive(false);
       setAdminUsers([]);
       setAdminError("");
       setAdminSuccess("");
@@ -422,7 +391,6 @@ export default function Home() {
           method: "PATCH",
           headers: { "Content-Type": "application/json", ...csrfHeaders() },
           body: JSON.stringify({
-            userId: user.id,
             ownerName: profileOwnerName,
             address: profileAddress
           })
@@ -472,19 +440,45 @@ export default function Home() {
       setAdminError("Nu ai un email asociat contului.");
       return;
     }
-    if (!adminPassword.trim()) {
-      setAdminError("Introdu parola de admin.");
-      return;
-    }
 
     setAdminLoading(true);
     setAdminError("");
     setAdminSuccess("");
     try {
+      if (!adminSessionActive) {
+        if (!adminAuthPassword.trim()) {
+          setAdminError("Introdu parola de admin.");
+          return;
+        }
+
+        const authResponse = await fetch("/api/admin/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...csrfHeaders() },
+          body: JSON.stringify({ password: adminAuthPassword })
+        });
+
+        let authData: any = null;
+        try {
+          const authText = await authResponse.text();
+          if (authText) {
+            authData = JSON.parse(authText);
+          }
+        } catch {
+          authData = null;
+        }
+
+        if (!authResponse.ok) {
+          const authError = (authData && authData.error) || "Nu am putut valida sesiunea de admin.";
+          throw new Error(authError);
+        }
+
+        setAdminSessionActive(true);
+        setAdminAuthPassword("");
+      }
+
       const response = await fetch("/api/admin/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...csrfHeaders() },
-        body: JSON.stringify({ email: user.email, password: adminPassword })
+        headers: { ...csrfHeaders() }
       });
 
       let data: any = null;
@@ -510,20 +504,19 @@ export default function Home() {
       setAdminSuccess(`Au fost încărcate ${data.length} conturi.`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Nu am putut încărca lista de conturi.";
+      if (message.toLowerCase().includes("expirat")) {
+        setAdminSessionActive(false);
+      }
       setAdminError(message);
     } finally {
       setAdminLoading(false);
     }
-  }, [adminPassword, user?.email]);
+  }, [adminAuthPassword, adminSessionActive, user?.email]);
 
   const handleAdminDelete = useCallback(
     async (userId: string) => {
-      if (!user?.email) {
-        setAdminError("Nu ai un email asociat contului.");
-        return;
-      }
-      if (!adminPassword.trim()) {
-        setAdminError("Introdu parola de admin.");
+      if (!adminSessionActive) {
+        setAdminError("Sesiunea admin a expirat. Reîncarcă conturile ca să te autentifici din nou.");
         return;
       }
 
@@ -538,7 +531,7 @@ export default function Home() {
         const response = await fetch("/api/admin/users", {
           method: "DELETE",
           headers: { "Content-Type": "application/json", ...csrfHeaders() },
-          body: JSON.stringify({ email: user.email, password: adminPassword, userId })
+          body: JSON.stringify({ userId })
         });
 
         let data: any = null;
@@ -560,12 +553,15 @@ export default function Home() {
         setAdminSuccess("Contul a fost șters.");
       } catch (err) {
         const message = err instanceof Error ? err.message : "Nu am putut șterge contul.";
+        if (message.toLowerCase().includes("expirat")) {
+          setAdminSessionActive(false);
+        }
         setAdminError(message);
       } finally {
         setAdminLoading(false);
       }
     },
-    [adminPassword, user?.email]
+    [adminSessionActive]
   );
 
   const handleSubmit = useCallback(
@@ -643,7 +639,6 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json", ...csrfHeaders() },
           body: JSON.stringify({
-            userId: user.id,
             previousReading: previous,
             currentReading: current,
             pcs: pcsValue,
@@ -872,7 +867,6 @@ export default function Home() {
         const form = new FormData();
         form.append("file", file);
         form.append("city", city);
-        form.append("userId", user.id);
 
         const response = await fetch("/api/invoices/upload", {
           method: "POST",
@@ -982,12 +976,13 @@ export default function Home() {
         {user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && (
           <AdminUsersPanel
             adminEmail={ADMIN_EMAIL}
-            adminPassword={adminPassword}
+            adminPassword={adminAuthPassword}
+            isAuthenticated={adminSessionActive}
             users={adminUsers}
             loading={adminLoading}
             error={adminError}
             success={adminSuccess}
-            onAdminPasswordChange={setAdminPassword}
+            onAdminPasswordChange={setAdminAuthPassword}
             onLoadUsers={handleAdminLoad}
             onDeleteUser={handleAdminDelete}
           />

@@ -6,6 +6,9 @@ type ResetPayload = {
   email?: string;
 };
 
+const hashResetToken = (token: string) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
 export async function POST(request: Request) {
   const DEFAULT_RESET_BASE_URL = "https://reset.gaz.cosmin-lab.cloud/";
 
@@ -24,7 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Introdu adresa de email." }, { status: 422 });
     }
 
-    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = hashResetToken(crypto.randomBytes(32).toString("hex"));
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     const user = await prisma.user.findFirst({
@@ -49,7 +52,7 @@ export async function POST(request: Request) {
 
     const resetRequest = await prisma.passwordResetToken.create({
       data: {
-        token,
+        token: tokenHash,
         email: resetEmail,
         userId: user.id,
         expiresAt

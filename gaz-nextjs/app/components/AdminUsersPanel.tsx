@@ -15,6 +15,7 @@ export type AdminUser = {
 type Props = {
   adminEmail: string;
   adminPassword: string;
+  isAuthenticated: boolean;
   users: AdminUser[];
   loading: boolean;
   error: string;
@@ -27,6 +28,7 @@ type Props = {
 function AdminUsersPanelComponent({
   adminEmail,
   adminPassword,
+  isAuthenticated,
   users,
   loading,
   error,
@@ -39,8 +41,10 @@ function AdminUsersPanelComponent({
     <section style={styles.fieldGroup}>
       <h2 style={styles.sectionTitle}>Administrare conturi</h2>
       <p style={styles.authNotice}>
-        Acces limitat pentru <strong>{adminEmail}</strong>. Introdu parola de admin ca să listezi și să ștergi
-        conturi.
+        Acces limitat pentru <strong>{adminEmail}</strong>.{" "}
+        {isAuthenticated
+          ? "Sesiunea admin este activă."
+          : "Introdu parola de admin pentru a deschide sesiunea."}
       </p>
       <div style={styles.formRow}>
         <label style={styles.label}>
@@ -51,11 +55,12 @@ function AdminUsersPanelComponent({
             value={adminPassword}
             onChange={(event) => onAdminPasswordChange(event.target.value)}
             placeholder="admin"
+            disabled={loading || isAuthenticated}
           />
         </label>
         <div style={{ display: "flex", alignItems: "flex-end" }}>
           <button type="button" style={styles.submitButton} onClick={onLoadUsers} disabled={loading}>
-            {loading ? "Se încarcă..." : "Încarcă conturile"}
+            {loading ? "Se încarcă..." : isAuthenticated ? "Reîncarcă conturile" : "Autentifică + încarcă"}
           </button>
         </div>
       </div>

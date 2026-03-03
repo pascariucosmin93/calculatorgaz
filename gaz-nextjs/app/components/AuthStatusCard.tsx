@@ -112,6 +112,7 @@ function AuthStatusCardComponent({
               style={styles.authInput}
               value={resetEmail}
               onChange={(event) => onResetEmailChange(event.target.value)}
+              maxLength={254}
               required
             />
           </label>
@@ -143,6 +144,7 @@ function AuthStatusCardComponent({
               style={styles.authInput}
               value={authUsername}
               onChange={(event) => onUsernameChange(event.target.value)}
+              maxLength={64}
               required
             />
           </label>
@@ -155,6 +157,7 @@ function AuthStatusCardComponent({
                 style={styles.authInput}
                 value={authEmail}
                 onChange={(event) => onEmailChange(event.target.value)}
+                maxLength={254}
                 required
               />
             </label>
@@ -167,6 +170,7 @@ function AuthStatusCardComponent({
               style={styles.authInput}
               value={authPassword}
               onChange={(event) => onPasswordChange(event.target.value)}
+              maxLength={128}
               required
             />
           </label>

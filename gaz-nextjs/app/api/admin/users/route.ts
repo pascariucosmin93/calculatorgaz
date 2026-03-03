@@ -1,56 +1,20 @@
-import bcrypt from "bcryptjs";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
+import { isErrorResponse } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/admin-session";
 import prisma from "@/lib/prisma";
 
 type Payload = {
-  email?: string;
-  password?: string;
   userId?: string;
 };
 
 const normalize = (value?: string | null) => (value ?? "").trim();
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").toLowerCase();
-
-// Hash the admin password lazily on first use (async, non-blocking)
-const ADMIN_PASSWORD_RAW = process.env.ADMIN_PASSWORD;
-let adminPasswordHash: string | null = null;
-let hashPromise: Promise<string> | null = null;
-
-function getAdminHash(): Promise<string> | null {
-  if (adminPasswordHash) return Promise.resolve(adminPasswordHash);
-  if (hashPromise) return hashPromise;
-  if (!ADMIN_PASSWORD_RAW || ADMIN_PASSWORD_RAW.length === 0) return null;
-
-  hashPromise = bcrypt.hash(ADMIN_PASSWORD_RAW, 10).then((hash) => {
-    adminPasswordHash = hash;
-    return hash;
-  });
-  return hashPromise;
-}
-
-const isAuthorized = async (payload: Payload): Promise<boolean> => {
-  const hash = await getAdminHash();
-  if (!hash || !ADMIN_EMAIL) return false;
-  const email = normalize(payload.email).toLowerCase();
-  const password = normalize(payload.password);
-  if (email !== ADMIN_EMAIL) return false;
-  return bcrypt.compare(password, hash);
-};
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    let payload: Payload;
-    try {
-      payload = (await request.json()) as Payload;
-    } catch {
-      return NextResponse.json({ error: "Body invalid." }, { status: 400 });
-    }
-
-    if (!(await isAuthorized(payload))) {
-      return NextResponse.json({ error: "Acces interzis." }, { status: 403 });
-    }
+    const adminSession = await requireAdminSession(request);
+    if (isErrorResponse(adminSession)) return adminSession;
 
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -71,17 +35,16 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
+    const adminSession = await requireAdminSession(request);
+    if (isErrorResponse(adminSession)) return adminSession;
+
     let payload: Payload;
     try {
       payload = (await request.json()) as Payload;
     } catch {
       return NextResponse.json({ error: "Body invalid." }, { status: 400 });
-    }
-
-    if (!(await isAuthorized(payload))) {
-      return NextResponse.json({ error: "Acces interzis." }, { status: 403 });
     }
 
     const userId = normalize(payload.userId);

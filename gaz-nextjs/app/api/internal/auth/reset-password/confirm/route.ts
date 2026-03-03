@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
@@ -9,6 +10,9 @@ type ConfirmPayload = {
   email?: string;
   password?: string;
 };
+
+const hashResetToken = (token: string) =>
+  crypto.createHash("sha256").update(token).digest("hex");
 
 export async function POST(request: Request) {
   try {
@@ -45,10 +49,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const tokenHash = token ? hashResetToken(token) : "";
+
     const storedToken = resetId
       ? await prisma.passwordResetToken.findUnique({ where: { id: resetId } })
       : token
-        ? await prisma.passwordResetToken.findUnique({ where: { token } })
+        ? (await prisma.passwordResetToken.findUnique({ where: { token: tokenHash } })) ??
+          (await prisma.passwordResetToken.findUnique({ where: { token } }))
         : null;
 
     if (!storedToken) {
@@ -56,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     if (new Date(storedToken.expiresAt).getTime() < Date.now()) {
-      await prisma.passwordResetToken.deleteMany({ where: { token } });
+      await prisma.passwordResetToken.delete({ where: { id: storedToken.id } });
       return NextResponse.json({ error: "Tokenul a expirat. Trimite o nouă cerere." }, { status: 400 });
     }
 
@@ -69,7 +76,7 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      await prisma.passwordResetToken.deleteMany({ where: { token } });
+      await prisma.passwordResetToken.delete({ where: { id: storedToken.id } });
       return NextResponse.json({ error: "Contul nu a fost găsit." }, { status: 404 });
     }
 

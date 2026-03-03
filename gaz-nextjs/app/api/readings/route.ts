@@ -42,12 +42,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-
-    if (body.userId && body.userId !== session.id) {
-      return NextResponse.json({ error: "Acces interzis." }, { status: 403 });
-    }
-
-    body.userId = body.userId || session.id;
+    body.userId = session.id;
 
     const response = await fetch(`${READING_SERVICE_URL.replace(/\/+$/, "")}/readings`, {
       method: "POST",
