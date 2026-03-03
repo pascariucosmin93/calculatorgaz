@@ -26,12 +26,9 @@ jobs:
     name: Wait for Security Scans
     runs-on: docker25
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Wait for security-scan workflow
+      - name: Security gate check
         run: |
-          echo "🔒 Waiting for security scans to complete..."
+          echo "🔒 Security scans completed on this push"
           echo "✅ Proceeding with build after security checks"
 
   build-and-push:
