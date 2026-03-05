@@ -18,7 +18,8 @@ const S3_ENDPOINT =
 const S3_REGION = process.env.SEAWEED_S3_REGION?.trim() || "us-east-1";
 const S3_ACCESS_KEY = process.env.SEAWEED_S3_ACCESS_KEY?.trim() || "";
 const S3_SECRET_KEY = process.env.SEAWEED_S3_SECRET_KEY?.trim() || "";
-const PHOTOS_BUCKET = "contor-photos";
+const PHOTOS_BUCKET = "facturi";
+const PHOTOS_PREFIX = "contor-photos/";
 
 // ── Tesseract worker (singleton, sequential) ──────────────────────────
 let worker = null;
@@ -182,11 +183,10 @@ const server = http.createServer(async (req, res) => {
       if (S3_ACCESS_KEY && S3_SECRET_KEY) {
         try {
           const client = getS3Client();
-          await ensurePhotoBucket();
 
           const ts = Date.now();
-          const prevKey = `${username}/${ts}-previous${fileExtension(previousFile.filename, previousFile.mimeType)}`;
-          const currKey = `${username}/${ts}-current${fileExtension(currentFile.filename, currentFile.mimeType)}`;
+          const prevKey = `${PHOTOS_PREFIX}${username}/${ts}-previous${fileExtension(previousFile.filename, previousFile.mimeType)}`;
+          const currKey = `${PHOTOS_PREFIX}${username}/${ts}-current${fileExtension(currentFile.filename, currentFile.mimeType)}`;
 
           await Promise.all([
             client.send(
