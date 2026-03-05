@@ -11,7 +11,6 @@ const SESSION_SERVICE_URL =
 export async function POST(request: Request) {
   try {
     const body = await request.text();
-    const cookieConsent = request.headers.get("x-cookie-consent") === "accepted";
 
     const response = await fetch(`${AUTH_SERVICE_URL.replace(/\/+$/, "")}/auth/login`, {
       method: "POST",
@@ -23,7 +22,7 @@ export async function POST(request: Request) {
 
     const text = await response.text();
 
-    if (!response.ok || !cookieConsent) {
+    if (!response.ok) {
       return new NextResponse(text, {
         status: response.status,
         headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" }
