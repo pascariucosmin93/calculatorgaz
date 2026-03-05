@@ -43,6 +43,7 @@ COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
 COPY --from=builder --chown=appuser:appgroup /app/public ./public
 COPY --from=builder --chown=appuser:appgroup /app/.next/static ./.next/static
 COPY --from=builder --chown=appuser:appgroup /app/.next/standalone ./
+COPY --from=builder --chown=appuser:appgroup /app/node_modules/tesseract.js-core ./node_modules/tesseract.js-core
 
 USER appuser
 
