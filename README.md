@@ -1,185 +1,223 @@
-# Gaz Platform - Technical Documentation
+# GAZ Calculator Platform
 
-## 1. Overview
+Gas consumption and cost calculator with OCR, billing, reporting, and microservices architecture.
 
-This repository contains a gas consumption and cost platform built as a **Next.js application + internal microservices** deployed in Kubernetes (`namespace: gaz`).
+## Architecture
 
-Main capabilities:
-- User signup/login/profile
-- Gas reading submission and billing calculation
-- Reporting (monthly aggregates, compare, CSV/PDF export)
-- Notifications to Discord
-- Password reset flow
-- Invoice PDF upload and tariff autofill (SeaweedFS/S3)
+```
+                         ┌─────────────────────────────────────────────────────┐
+                         │                   Kubernetes (ns: gaz)              │
+                         │                                                     │
+    Internet             │  ┌─────────────────────────────────────────────┐    │
+       │                 │  │         Cilium Gateway API (.54)            │    │
+       │   DNS (.53)     │  │           gaz-gateway:80                    │    │
+       ▼                 │  └──────┬──────────┬──────────────┬────────────┘    │
+  ┌─────────┐            │         │          │              │                 │
+  │ CloudF. │────────────┼────►    │          │              │                 │
+  └─────────┘            │         │          │              │                 │
+                         │         │ direct   │ direct       │ proxy           │
+                         │         ▼          ▼              ▼                 │
+                         │  ┌───────────┐ ┌────────────┐ ┌──────────────┐     │
+                         │  │ billing   │ │ reporting  │ │calculatorgaz │     │
+                         │  │ :8080     │ │ :8081      │ │ Next.js:3000 │     │
+                         │  │ stateless │ │ stateless  │ │ frontend+API │     │
+                         │  └───────────┘ └─────┬──────┘ └──────┬───────┘     │
+                         │                      │               │              │
+                         │                      │        ┌──────┼──────┐       │
+                         │                      ▼        ▼      ▼      ▼       │
+                         │                ┌─────────┐ ┌────┐ ┌────┐ ┌──────┐  │
+                         │                │reading  │ │auth│ │inv.│ │pw-   │  │
+                         │                │:8084    │ │8083│ │8087│ │reset │  │
+                         │                └────┬────┘ └──┬─┘ └──┬─┘ │8086  │  │
+                         │                     │         │      │   └──┬───┘  │
+                         │                     │         ▼      ▼      ▼       │
+                         │                     │    ┌──────────────────────┐   │
+                         │                     └───►│  /api/internal/*    │   │
+                         │                          │  (Next.js + Prisma) │   │
+                         │                          └─────────┬──────────┘   │
+                         │                                    │               │
+                         │                                    ▼               │
+                         │                             ┌────────────┐         │
+                         │                             │ PostgreSQL │         │
+                         │                             │ (postgress │         │
+                         │                             │  namespace)│         │
+                         │                             └────────────┘         │
+                         │                                                     │
+                         │  Other: session-service:8088 (JWT sign/verify)     │
+                         │         notification-service:8082 (Discord)        │
+                         └─────────────────────────────────────────────────────┘
+```
 
-## 2. Repository Structure
+### Routing (Cilium Gateway API)
 
-- `gaz-nextjs/`: Next.js app (frontend + API routes)
-- `k8s/`: Kubernetes manifests for all services
-- `.github/workflows/`: CI workflows (build and tests)
-- `argocd/`: Argo CD application manifests/configs
-- `scripts/`: utility scripts
+**Direct la microservicii** (fara Next.js hop):
+| Gateway Path | Backend | Rewrite |
+|---|---|---|
+| `POST /api/calculate` | billing-service:8080 | `/calculate` |
+| `GET /api/reports/monthly` | reporting-service:8081 | `/report/monthly` |
+| `GET /api/reports/export/csv` | reporting-service:8081 | `/report/export.csv` |
+| `GET /api/reports/export/pdf` | reporting-service:8081 | `/report/export.pdf` |
 
-## 3. Runtime Architecture
+**Prin Next.js** (necesita sesiune/Prisma):
+`/api/auth/*`, `/api/readings`, `/api/invoices/*`, `/api/ocr`, `/api/admin/*`, `/api/health`, `/api/settings`, `/api/csrf`
 
-### 3.1 Entry Point
-- Public app service: `calculatorgaz` (`LoadBalancer`)
-- Internal API calls from frontend go through Next.js API routes (`/api/*`)
+**Blocat la Gateway** (404, fara HTTPRoute):
+`/api/internal/*` - accesibil doar din cluster via `X-Internal-Api-Key`
 
-### 3.2 Services
+## Repositories
 
-| Service | Port | Role |
-|---|---:|---|
-| `calculatorgaz` | 3000 | Next.js frontend + internal API implementation |
-| `auth-service` | 8083 | signup/login/profile proxy |
-| `password-reset-service` | 8086 | reset request/confirm proxy |
-| `reading-service` | 8084 | readings CRUD proxy |
-| `billing-service` | 8080 | billing compute engine |
-| `reporting-service` | 8081 | reports and CSV/PDF exports |
-| `notification-service` | 8082 | Discord notifications |
-| `invoice-service` | 8087 | invoice upload proxy |
+| Repo | Continut | Forgejo |
+|---|---|---|
+| `gaz` (acesta) | Next.js app + CI workflows + ArgoCD manifests | cosmin/gaz |
+| `gaz-gitops` | Helm chart Kubernetes (values + templates) | cosmin/gaz-gitops |
 
-All service manifests are under `k8s/*.yaml`.
+### Structura `gaz`
+```
+gaz-nextjs/          # Next.js app (frontend + API routes)
+  app/
+    api/             # API endpoints (auth, readings, reports, admin, internal)
+    components/      # React components (ProfileForm, SettingsForm, etc.)
+  lib/               # Business logic (billing, types, formatting, Prisma)
+  prisma/            # DB schema
+  tests/             # Vitest tests
+  middleware.ts      # CSRF, rate limiting, internal API protection
+.github/workflows/   # Forgejo Actions (kube-build, tests-docker, security-scan)
+argocd/              # ArgoCD Application manifests
+```
 
-## 4. Key Flows
+### Structura `gaz-gitops`
+```
+k8s/chart/
+  Chart.yaml
+  values.yaml           # Toata configuratia + scripturile microserviciilor
+  templates/
+    calculatorgaz/       # Deployment, Service, HPA
+    microservices/       # ConfigMap, Deployment, Service (generate din values)
+    gateway/             # Gateway + HTTPRoutes (Cilium Gateway API)
+    backup/              # CronJobs (DB + Secrets backup la S3)
+    network-policies.yaml
+```
 
-### 4.1 Auth Flow
-1. Frontend calls `/api/auth/*`.
-2. Next.js route proxies to `auth-service`.
-3. `auth-service` proxies to internal Next.js routes (`/api/internal/auth/*`).
-4. Prisma writes/reads users in PostgreSQL.
+## Services
 
-### 4.2 Password Reset Flow (Hardened)
-1. User requests reset via `/api/auth/reset-password`.
-2. System creates `PasswordResetToken` record.
-3. Notification contains link with **opaque `rid`** (no raw token in URL).
-4. Confirm endpoint validates by `rid` (or legacy token fallback) and updates password hash.
+| Service | Port | Tip | Rol |
+|---|---:|---|---|
+| `calculatorgaz` | 3000 | Next.js | Frontend + API proxy + Prisma |
+| `billing-service` | 8080 | Stateless | Calcul cost gaz (m3 → kWh → MWh → lei) |
+| `reporting-service` | 8081 | Stateless | Rapoarte lunare, CSV/PDF export |
+| `reading-service` | 8084 | Proxy | CRUD citiri (via /api/internal) |
+| `auth-service` | 8083 | Proxy | Signup/login/profile (via /api/internal) |
+| `invoice-service` | 8087 | Proxy | Upload facturi PDF (via /api/internal) |
+| `password-reset-service` | 8086 | Proxy | Reset parola (via /api/internal) |
+| `session-service` | 8088 | Stateless | JWT sign/verify (HS256) |
+| `notification-service` | 8082 | Stateless | Discord webhooks |
 
-### 4.3 Reading + Billing Flow
-1. Frontend submits reading to `/api/readings`.
-2. `reading-service` forwards to internal reading route.
-3. Billing is computed via `billing-service` (with local fallback if service unavailable).
-4. Result is persisted and notification is sent.
+**Stateless** = self-contained, nu apeleaza /api/internal
+**Proxy** = forward la Next.js /api/internal/* cu `X-Internal-Api-Key`
 
-### 4.4 Invoice Upload + Tariff Autofill
-1. Frontend uploads PDF in Settings form to `/api/invoices/upload`.
-2. `invoice-service` forwards multipart payload to internal route.
-3. Internal route stores PDF in SeaweedFS S3 bucket `facturi`.
-4. Basic text extraction + city profile (`auto`/`bucuresti`/`iasi`) returns tariff profile.
-5. Frontend applies returned values into billing settings fields.
+## Database (PostgreSQL + Prisma)
 
-## 5. Storage and External Systems
+**Models**: `User`, `Reading`, `PasswordResetToken`
+- Users: username, email, passwordHash (bcryptjs), address
+- Readings: meter values, consumption (m3/kWh), costs, linked to user
+- PasswordResetToken: hashed token, expiration, linked to user
 
-### 5.1 PostgreSQL
-- Main relational store for users, readings, password reset records.
-- Accessed via Prisma.
+Host: `postgres.postgress.svc.cluster.local:5432`, DB: `gaz`
 
-### 5.2 SeaweedFS S3
-- Endpoint: `https://s3.galeata.devjobs.ro`
-- Bucket: `facturi`
-- Used by invoice upload flow.
+## External Systems
 
-### 5.3 Discord Webhooks
-- Used for notification events and reset links.
-- Webhook URLs must be stored in Kubernetes Secrets, not in Git.
+| System | Endpoint | Rol |
+|---|---|---|
+| PostgreSQL | `postgres.postgress.svc.cluster.local` | Main datastore |
+| SeaweedFS S3 | `https://s3.galeata.devjobs.ro` | Stocare facturi (bucket: `facturi`) |
+| Discord Webhooks | secret | Notificari + link-uri reset parola |
+| Container Registry | `registry.infraejobs.ro` | Docker images |
 
-## 6. Kubernetes Deployment Model
+## Security
 
-### 6.1 Namespace
-- `gaz`
+### Middleware (middleware.ts)
+- **Rate limiting**: 10 req/min pe IP pentru login/signup/reset
+- **CSRF**: token in cookie `gaz-csrf`, validat via header `x-csrf-token`
+- **Internal API**: `/api/internal/*` blocat fara header `X-Internal-Api-Key`
+- **Reset domain**: `RESET_PASSWORD_BASE_URL` separat pentru link-uri reset
 
-### 6.2 Public exposure
-- `calculatorgaz` is `Service type: LoadBalancer` and externally reachable.
+### Network Policies
+- Default deny ingress in namespace
+- Fiecare microserviciu: ingress doar de la calculatorgaz (+ kube-system pentru servicii gateway-exposed)
+- Egress: DNS + callback la calculatorgaz + inter-service + PostgreSQL + HTTPS extern
 
-### 6.3 Autoscaling
-- HPA manifest: `k8s/calculatorgaz-hpa.yaml`
-- Target: CPU 80%, Memory 80%
-- Replicas: min `1`, max `10`
+### Security Scanning (CI)
+- **NPM Audit**: vulnerabilitati in dependinte
+- **Semgrep SAST**: analiza statica (OWASP, TypeScript)
+- **Trivy**: scan filesystem + Docker image (CRITICAL, HIGH)
+- **SBOM**: SPDX + CycloneDX (Syft)
+- **License Check**: conformitate licente open-source
 
-### 6.4 Resource Requests/Limits
-Configured in manifests:
-- `calculatorgaz`: req `200m/256Mi`, lim `1000m/512Mi`
-- most services: req `100m/128Mi`, lim `500m/256Mi`
-- `notification-service`: req `50m/64Mi`, lim `300m/192Mi`
+## CI/CD
 
-## 7. Configuration and Secrets
+### Forgejo Actions (`.github/workflows/`)
 
-### 7.1 Secret sources
-- Application secrets are loaded via `secretKeyRef`.
-- CI registry credentials are loaded from Forgejo/Git secrets.
+| Workflow | Runner | Trigger | Rol |
+|---|---|---|---|
+| `security-scan.yml` | `docker25` | PR, push main | NPM audit, Semgrep, Trivy, SBOM |
+| `kube-build.yml` | `docker25` | push main | Build Docker → push registry → update gitops tag |
+| `tests-docker.yml` | `docker-tests` | PR, push main | Vitest tests |
 
-### 7.2 Required secret keys (`calculatorgaz-secrets`)
-- `DATABASE_URL`
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
+### GitOps Flow
+```
+Push to gaz/main
+  → Forgejo Actions: test + security scan + build
+  → kube-build: push image, update tag in gaz-gitops/values.yaml
+  → ArgoCD: auto-sync gaz-gitops Helm chart to cluster
+```
+
+ArgoCD: auto-sync cu `prune: true` + `selfHeal: true`
+
+## Kubernetes
+
+- **Namespace**: `gaz`
+- **Ingress**: Cilium Gateway API pe `10.40.10.54` + LoadBalancer pe `10.40.10.53`
+- **IP Pool**: pool-2 (`10.40.10.50-110`), BGP advertised
+- **HPA**: calculatorgaz, min 1 / max 10, CPU 70%, Memory 70%
+
+### Secrets necesare
+
+`calculatorgaz-secrets`:
+- `DATABASE_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
 - `ADMIN_PASSWORD`
 - `DISCORD_RESET_WEBHOOK_URL`
-- `SEAWEED_S3_ACCESS_KEY`
-- `SEAWEED_S3_SECRET_KEY`
+- `SEAWEED_S3_ACCESS_KEY`, `SEAWEED_S3_SECRET_KEY`
+- `INTERNAL_API_KEY`, `JWT_SECRET`
 
-### 7.3 Notification secret
-- `notification-service-secrets` must contain:
-  - `DISCORD_WEBHOOK_URL`
+`notification-service-secrets`:
+- `DISCORD_WEBHOOK_URL`
 
-## 8. CI/CD
+`backup-s3-credentials`:
+- S3 credentials pentru backup CronJobs
 
-### 8.1 Build pipeline
-- Workflow: `.github/workflows/kube-build.yml`
-- Builds and pushes image tags for Kubernetes deployment.
+### Backup CronJobs
+- **DB dump**: zilnic la 02:00, retenție 30 zile → S3 `backup-db`
+- **Secrets export**: zilnic la 03:00, retenție 30 zile → S3 `backup-secrets-gaz`
 
-### 8.2 Separate tests pipeline
-- Workflow: `.github/workflows/tests-docker.yml`
-- Runs tests on dedicated runner label `docker-tests`.
+## Operations
 
-### 8.3 GitOps
-- Argo CD syncs manifests from repo (`k8s/` path) to cluster.
-
-## 9. Operations Runbook
-
-### 9.1 Quick health checks
 ```bash
+# Status
 kubectl -n gaz get deploy,pod,svc
+kubectl -n gaz get gateway,httproute
 kubectl -n gaz get hpa
 kubectl -n gaz top pod
-```
 
-### 9.2 Verify autoscaling
-```bash
-kubectl -n gaz describe hpa calculatorgaz
-```
+# Logs
+kubectl -n gaz logs deploy/calculatorgaz
+kubectl -n gaz logs deploy/billing-service
+kubectl -n gaz logs deploy/reporting-service
 
-### 9.3 Common failure: `CreateContainerConfigError`
-- Usually missing secret referenced by env var.
-- Check:
-```bash
+# Gateway check
+kubectl -n gaz get gateway          # ADDRESS + Programmed: True
+kubectl -n gaz get httproute        # Toate rutele active
+
+# Common issue: CreateContainerConfigError = missing secret
 kubectl -n gaz describe pod <pod-name>
 kubectl -n gaz get secret
 ```
-
-### 9.4 Check notification service
-```bash
-kubectl -n gaz logs deploy/notification-service
-```
-
-### 9.5 Check invoice upload path
-```bash
-kubectl -n gaz logs deploy/calculatorgaz
-kubectl -n gaz logs deploy/invoice-service
-```
-
-## 10. Security Notes
-
-- Do not commit raw credentials or webhooks.
-- Rotate registry, DB, and webhook credentials periodically.
-- Password reset links use opaque request id (`rid`) to avoid exposing reset token in URL.
-- Admin account deletion is blocked in admin users API.
-
-## 11. Known Gaps / Next Improvements
-
-- Replace heuristic PDF parsing with robust extraction pipeline (OCR + template matching).
-- Add audit trail for admin actions.
-- Add integration tests for invoice upload and tariff autofill.
-- Add network policies between services for stricter east-west traffic control.
-
----
-Document owner: Platform/Gaz team
