@@ -5,7 +5,6 @@ const nextConfig = {
     ignoreBuildErrors: false
   },
   output: "standalone",
-  serverExternalPackages: ["tesseract.js"],
   async headers() {
     return [
       {

@@ -16,6 +16,7 @@ concurrency:
 env:
   REGISTRY: registry.infraejobs.ro
   IMAGE_NAME: infra/gaz/calculatorgaz
+  OCR_IMAGE_NAME: infra/gaz/ocr-service
   REGISTRY_USER: ${{ secrets.DOCKER_USER }}
   REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
   FORGEJO_URL: https://forgejo-kube.cosmin-lab.com
@@ -90,7 +91,7 @@ jobs:
           echo "=== NPM Audit Results ==="
           npm audit --audit-level=moderate || echo "⚠️  Dependencies have moderate/high vulnerabilities - review carefully"
 
-      - name: Build image
+      - name: Build calculatorgaz image
         run: |
           cd gaz-nextjs
           IMAGE_REF="$REGISTRY/$IMAGE_NAME"
@@ -99,27 +100,35 @@ jobs:
             -t $IMAGE_REF:latest \
             .
 
-      - name: Scan image for vulnerabilities (Trivy)
+      - name: Build ocr-service image
         run: |
-          IMAGE_REF="$REGISTRY/$IMAGE_NAME"
-          docker pull docker.io/aquasec/trivy:latest
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v /tmp/trivy:/root/.cache/trivy \
-            docker.io/aquasec/trivy:latest \
-            image \
-            --severity CRITICAL,HIGH \
-            --exit-code 0 \
-            --format sarif \
-            --output /tmp/trivy-results.sarif \
-            $IMAGE_REF:${{ steps.vars.outputs.short_sha }}
-          echo "=== Trivy Scan Complete ==="
-          cat /tmp/trivy-results.sarif | jq '.runs[0].results | length' || echo "0 vulnerabilities found"
+          cd ocr-service
+          IMAGE_REF="$REGISTRY/$OCR_IMAGE_NAME"
+          docker build \
+            -t $IMAGE_REF:${{ steps.vars.outputs.short_sha }} \
+            -t $IMAGE_REF:latest \
+            .
 
-      - name: Push commit tag
+      - name: Scan images for vulnerabilities (Trivy)
         run: |
-          IMAGE_REF="$REGISTRY/$IMAGE_NAME"
-          docker push $IMAGE_REF:${{ steps.vars.outputs.short_sha }}
+          docker pull docker.io/aquasec/trivy:latest
+          for IMG in "$REGISTRY/$IMAGE_NAME" "$REGISTRY/$OCR_IMAGE_NAME"; do
+            echo "=== Scanning $IMG ==="
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v /tmp/trivy:/root/.cache/trivy \
+              docker.io/aquasec/trivy:latest \
+              image \
+              --severity CRITICAL,HIGH \
+              --exit-code 0 \
+              $IMG:${{ steps.vars.outputs.short_sha }}
+          done
+          echo "=== Trivy Scan Complete ==="
+
+      - name: Push commit tags
+        run: |
+          docker push "$REGISTRY/$IMAGE_NAME:${{ steps.vars.outputs.short_sha }}"
+          docker push "$REGISTRY/$OCR_IMAGE_NAME:${{ steps.vars.outputs.short_sha }}"
 
       - name: Update GitOps image tags
         env:
@@ -145,6 +154,7 @@ jobs:
             exit 1
           fi
 
+          # Update both calculatorgaz and ocrService image tags
           sed -i "s|^\(\s*tag:\s*\)\".*\"|\1\"$SHORT_SHA\"|" k8s/chart/values.yaml
 
           if git diff --quiet; then
@@ -155,5 +165,5 @@ jobs:
           git config user.name "Gaz CI Bot"
           git config user.email "gaz-ci-bot@local"
           git add k8s/chart/values.yaml
-          git commit -m "chore(gitops): update calculatorgaz image to $SHORT_SHA"
+          git commit -m "chore(gitops): update image tags to $SHORT_SHA"
           git push origin main

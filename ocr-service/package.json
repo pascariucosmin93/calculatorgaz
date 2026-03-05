@@ -1,0 +1,13 @@
+{
+  "name": "ocr-service",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "tesseract.js": "^5.1.1",
+    "@aws-sdk/client-s3": "^3.700.0",
+    "busboy": "^1.6.0"
+  }
+}

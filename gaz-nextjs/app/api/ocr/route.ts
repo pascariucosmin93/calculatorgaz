@@ -1,75 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession, isErrorResponse } from "@/lib/auth";
-import { recognizeDigits } from "@/lib/ocr-worker";
-import {
-  CreateBucketCommand,
-  HeadBucketCommand,
-  PutObjectCommand,
-  S3Client
-} from "@aws-sdk/client-s3";
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
-const PHOTOS_BUCKET = "contor-photos";
-
-const S3_ENDPOINT = process.env.SEAWEED_S3_ENDPOINT?.trim() || "https://s3.galeata.devjobs.ro";
-const S3_REGION = process.env.SEAWEED_S3_REGION?.trim() || "us-east-1";
-const S3_ACCESS_KEY = process.env.SEAWEED_S3_ACCESS_KEY?.trim() || "";
-const S3_SECRET_KEY = process.env.SEAWEED_S3_SECRET_KEY?.trim() || "";
-
-let bucketReady = false;
-
-async function ensurePhotoBucket(client: S3Client) {
-  if (bucketReady) return;
-  try {
-    await client.send(new HeadBucketCommand({ Bucket: PHOTOS_BUCKET }));
-  } catch {
-    await client.send(new CreateBucketCommand({ Bucket: PHOTOS_BUCKET }));
-  }
-  bucketReady = true;
-}
-
-function fileExtension(file: File): string {
-  const name = file.name || "";
-  const dot = name.lastIndexOf(".");
-  if (dot !== -1) return name.slice(dot);
-  if (file.type === "image/jpeg") return ".jpg";
-  if (file.type === "image/png") return ".png";
-  if (file.type === "image/webp") return ".webp";
-  return ".bin";
-}
-
-/**
- * Extrage numai indexul contorului
- * — caută secvențe de 4–7 cifre consecutive
- * — selectează secvența cea mai logică (5–6 cifre)
- * — ignoră cifrele roșii (zecimale)
- * — ignoră numerele din etichetă (2006, 00838754)
- */
-function extractNumber(rawText: string) {
-  if (!rawText) return null;
-
-  const matches = rawText.match(/\d{4,7}/g);
-  if (!matches || matches.length === 0) return null;
-
-  const likely = matches.find(seq => seq.length === 5 || seq.length === 6);
-  return likely ? parseInt(likely, 10) : parseInt(matches[0], 10);
-}
-
-async function readMeterValue(file: File) {
-  if (file.size > MAX_IMAGE_SIZE) {
-    throw new Error(`Imaginea depășește limita de ${MAX_IMAGE_SIZE / 1024 / 1024} MB.`);
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const text = await recognizeDigits(buffer);
-  const value = extractNumber(text);
-
-  if (value === null) {
-    throw new Error("Nu am reușit să detectez cifre clare în imagine.");
-  }
-
-  return { value, buffer };
-}
+const OCR_SERVICE_URL = (process.env.OCR_SERVICE_URL || "http://ocr-service:8089").replace(/\/+$/, "");
 
 export async function POST(request: NextRequest) {
   const session = await verifySession(request);
@@ -87,61 +19,29 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Sequential OCR through the shared worker (no parallel WASM spawning)
-    const previous = await readMeterValue(previousImage);
-    const current = await readMeterValue(currentImage);
+    // Forward to OCR microservice with username for S3 folder naming
+    const proxyForm = new FormData();
+    proxyForm.append("previous", previousImage);
+    proxyForm.append("current", currentImage);
+    proxyForm.append("username", session.username);
 
-    // Upload photos to S3 in background (don't block response on failure)
-    const photos: { previous?: string; current?: string } = {};
-    if (S3_ACCESS_KEY && S3_SECRET_KEY) {
-      try {
-        const client = new S3Client({
-          endpoint: S3_ENDPOINT,
-          region: S3_REGION,
-          forcePathStyle: true,
-          credentials: {
-            accessKeyId: S3_ACCESS_KEY,
-            secretAccessKey: S3_SECRET_KEY
-          }
-        });
+    const response = await fetch(`${OCR_SERVICE_URL}/ocr`, {
+      method: "POST",
+      body: proxyForm
+    });
 
-        await ensurePhotoBucket(client);
+    const data = await response.json();
 
-        const username = session.username;
-        const ts = Date.now();
-        const prevKey = `${username}/${ts}-previous${fileExtension(previousImage)}`;
-        const currKey = `${username}/${ts}-current${fileExtension(currentImage)}`;
-
-        await Promise.all([
-          client.send(new PutObjectCommand({
-            Bucket: PHOTOS_BUCKET,
-            Key: prevKey,
-            Body: previous.buffer,
-            ContentType: previousImage.type || "image/jpeg"
-          })),
-          client.send(new PutObjectCommand({
-            Bucket: PHOTOS_BUCKET,
-            Key: currKey,
-            Body: current.buffer,
-            ContentType: currentImage.type || "image/jpeg"
-          }))
-        ]);
-
-        const base = S3_ENDPOINT.replace(/\/+$/, "");
-        photos.previous = `${base}/${PHOTOS_BUCKET}/${prevKey}`;
-        photos.current = `${base}/${PHOTOS_BUCKET}/${currKey}`;
-      } catch (s3Error) {
-        console.error("S3 upload error (non-blocking):", s3Error instanceof Error ? s3Error.message : s3Error);
-      }
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.error || "Eroare la procesarea imaginii." },
+        { status: response.status }
+      );
     }
 
-    return NextResponse.json({
-      previousReading: previous.value,
-      currentReading: current.value,
-      photos
-    });
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("OCR error:", error instanceof Error ? error.message : error);
+    console.error("OCR proxy error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "Eroare la procesarea imaginii." }, { status: 500 });
   }
 }
