@@ -151,7 +151,6 @@ function ReadingSectionComponent({
                   ref={previousInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   style={{ display: "none" }}
                   onChange={(e) => handleFileSelect("previous", e.target.files?.[0] || null)}
                 />
@@ -172,7 +171,6 @@ function ReadingSectionComponent({
                   ref={currentInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   style={{ display: "none" }}
                   onChange={(e) => handleFileSelect("current", e.target.files?.[0] || null)}
                 />
