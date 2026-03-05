@@ -1034,6 +1034,8 @@ export default function Home() {
                 isSaving={isSaving}
                 user={user}
                 onReadingChange={handleCurrentReadingChange}
+                onPreviousReadingChange={handlePreviousReadingChange}
+                csrfHeaders={csrfHeaders}
               />
               <SettingsForm
                 previousReading={previousReading}

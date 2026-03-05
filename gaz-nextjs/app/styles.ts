@@ -519,5 +519,74 @@ export const styles = {
   navItem: {
     fontWeight: 500,
     textAlign: "center" as const
+  },
+  ocrSection: {
+    borderRadius: "1rem",
+    border: "1px dashed var(--border)",
+    padding: "clamp(0.75rem, 2.5vw, 1rem)",
+    backgroundColor: "var(--surface-card)",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "0.75rem"
+  },
+  ocrTitle: {
+    margin: 0,
+    fontWeight: 600,
+    fontSize: "0.95rem",
+    color: "var(--text-primary)"
+  },
+  ocrGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "0.75rem"
+  },
+  ocrUploadZone: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    gap: "0.4rem",
+    border: "1px solid var(--border)",
+    borderRadius: "0.85rem",
+    padding: "0.75rem 0.5rem",
+    backgroundColor: "var(--input-bg)",
+    cursor: "pointer" as const,
+    textAlign: "center" as const,
+    position: "relative" as const,
+    overflow: "hidden" as const,
+    minHeight: 100
+  },
+  ocrUploadLabel: {
+    margin: 0,
+    fontSize: "0.8rem",
+    color: "var(--text-secondary)",
+    fontWeight: 600
+  },
+  ocrUploadHint: {
+    margin: 0,
+    fontSize: "0.7rem",
+    color: "var(--text-muted)"
+  },
+  ocrPreview: {
+    width: "100%",
+    maxHeight: 120,
+    objectFit: "contain" as const,
+    borderRadius: "0.5rem"
+  },
+  ocrButton: {
+    backgroundColor: "#d1081f",
+    color: "#fff",
+    borderRadius: "999px",
+    padding: "0.7rem",
+    fontWeight: 600,
+    fontSize: "0.9rem",
+    cursor: "pointer" as const,
+    border: "1px solid rgba(0,0,0,0.12)",
+    width: "100%"
+  },
+  ocrError: {
+    margin: 0,
+    color: "var(--error-text)",
+    fontSize: "0.85rem",
+    fontWeight: 600
   }
 } as const;
