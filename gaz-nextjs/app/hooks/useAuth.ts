@@ -41,7 +41,7 @@ export function useAuth() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    ensureCsrfToken().catch(() => {});
+    ensureCsrfToken().catch((err) => console.warn("CSRF token fetch failed:", err));
 
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
@@ -53,11 +53,12 @@ export function useAuth() {
             email: data.email ?? null,
             ownerName: data.ownerName ?? null,
             address: data.address ?? null,
+            isAdmin: data.isAdmin === true,
             createdAt: data.createdAt ?? new Date().toISOString()
           });
         }
       })
-      .catch(() => {});
+      .catch((err) => console.warn("Auth status check failed:", err));
   }, []);
 
   const handleAuthSubmit = useCallback(
@@ -117,6 +118,7 @@ export function useAuth() {
           email: (data.email as string) ?? null,
           ownerName: (data.ownerName as string) ?? null,
           address: (data.address as string) ?? null,
+          isAdmin: data.isAdmin === true,
           createdAt: data.createdAt as string
         });
         setAuthUsername("");
@@ -133,7 +135,7 @@ export function useAuth() {
 
   const handleLogout = useCallback(() => {
     setUser(null);
-    fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() }).catch(() => {});
+    fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() }).catch((err) => console.warn("Logout request failed:", err));
   }, []);
 
   const handleAuthModeChange = useCallback((mode: AuthMode) => {

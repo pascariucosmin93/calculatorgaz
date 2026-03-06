@@ -29,7 +29,6 @@ const THEME_STORAGE_KEY = "gaz-calculator:theme";
 const METER_SERIAL = "00838754/2013";
 const NAV_ITEMS = ["Acasă", "Autocitire", "Facturi", "Consum", "Myline"];
 const DEFAULT_ADDRESS = "Adresa locului de consum nu este configurată pentru acest cont.";
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
 
 const CHART_THEME: Record<ThemeMode, ChartTheme> = {
   light: {
@@ -185,9 +184,9 @@ export default function Home() {
           onResetPasswordSubmit={auth.handleResetPasswordSubmit}
           onLogout={auth.handleLogout}
         />
-        {user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && (
+        {user?.isAdmin && (
           <AdminUsersPanel
-            adminEmail={ADMIN_EMAIL}
+            adminEmail={user.email ?? ""}
             adminPassword={admin.adminAuthPassword}
             isAuthenticated={admin.adminSessionActive}
             users={admin.adminUsers}
@@ -211,7 +210,7 @@ export default function Home() {
             onSubmit={profile.handleProfileSubmit}
           />
         )}
-        {user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? null : user ? (
+        {user?.isAdmin ? null : user ? (
           <>
             <form style={styles.card} onSubmit={calculator.handleSubmit}>
               <div style={styles.brandBar}>

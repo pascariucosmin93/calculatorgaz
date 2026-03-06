@@ -64,7 +64,7 @@ export function useProfile(
 
         setUser((prev) =>
           prev
-            ? { ...prev, ownerName: (data!.ownerName as string) ?? null, address: (data!.address as string) ?? null }
+            ? { ...prev, ownerName: (data!.ownerName as string) ?? null, address: (data!.address as string) ?? null, isAdmin: prev.isAdmin }
             : prev
         );
         setProfileSuccess("Datele au fost salvate.");

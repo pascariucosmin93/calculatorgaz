@@ -4,6 +4,8 @@ const SESSION_SERVICE_URL =
   process.env.SESSION_SERVICE_URL?.trim() ??
   "http://session-service:8088";
 
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
+
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("gaz-session")?.value;
   if (!token) {
@@ -20,15 +22,19 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       const resp = NextResponse.json({ error: "Sesiune expirată." }, { status: 401 });
-      resp.cookies.set("gaz-session", "", { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 0 });
+      resp.cookies.set("gaz-session", "", { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 0 });
       return resp;
     }
 
     const payload = await res.json();
+    const email = payload.email ?? null;
+    const isAdmin = ADMIN_EMAIL !== "" && email?.toLowerCase() === ADMIN_EMAIL;
+
     return NextResponse.json({
       id: payload.id,
       username: payload.username,
-      email: payload.email ?? null
+      email,
+      isAdmin
     });
   } catch {
     return NextResponse.json({ error: "Session service indisponibil." }, { status: 502 });

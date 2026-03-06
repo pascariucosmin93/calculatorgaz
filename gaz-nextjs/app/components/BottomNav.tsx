@@ -10,10 +10,12 @@ type Props = {
 
 function BottomNavComponent({ items, activeItem }: Props) {
   return (
-    <nav style={styles.bottomNav}>
+    <nav style={styles.bottomNav} aria-label="Navigare principală">
       {items.map((item) => (
-        <span
+        <button
           key={item}
+          type="button"
+          aria-current={item === activeItem ? "page" : undefined}
           style={{
             ...styles.navItem,
             color: item === activeItem ? "#d1081f" : "var(--nav-inactive)",
@@ -21,7 +23,7 @@ function BottomNavComponent({ items, activeItem }: Props) {
           }}
         >
           {item}
-        </span>
+        </button>
       ))}
     </nav>
   );

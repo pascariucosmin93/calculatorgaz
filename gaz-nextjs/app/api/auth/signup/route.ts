@@ -57,20 +57,20 @@ export async function POST(request: Request) {
         res.cookies.set("gaz-session", token, {
           httpOnly: true,
           secure: true,
-          sameSite: "lax",
+          sameSite: "strict",
           path: "/",
           maxAge: 86400
         });
         return res;
       }
     } catch {
-      // Session service unavailable, return without cookie
+      // Session service unavailable — do NOT return partial success
     }
 
-    return new NextResponse(text, {
-      status: response.status,
-      headers: { "Content-Type": "application/json" }
-    });
+    return NextResponse.json(
+      { error: "Serviciul de sesiuni este momentan indisponibil. Încearcă din nou." },
+      { status: 503 }
+    );
   } catch (error) {
     return NextResponse.json(
       { error: "Serviciul de autentificare este momentan indisponibil." },

@@ -134,6 +134,17 @@ export function useCalculator(
           throw new Error(data.error || "Nu am putut salva calculul.");
         }
 
+        if (
+          typeof data.consumptionM3 !== "number" ||
+          typeof data.consumptionKwh !== "number" ||
+          typeof data.fixedFee !== "number" ||
+          typeof data.subtotal !== "number" ||
+          typeof data.vat !== "number" ||
+          typeof data.total !== "number"
+        ) {
+          throw new Error("Răspuns invalid de la server — lipsesc câmpuri numerice.");
+        }
+
         const computedConsumptionMwh =
           typeof data.consumptionMwh === "number" ? data.consumptionMwh : data.consumptionKwh / 1000;
         const breakdown = data.breakdown ?? {
@@ -173,7 +184,7 @@ export function useCalculator(
           breakdown
         });
 
-        fetchHistory().catch(() => {});
+        fetchHistory().catch((err) => console.warn("History refresh failed:", err));
         settings.saveToLocalStorage(current);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Eroare la salvarea calculului.");

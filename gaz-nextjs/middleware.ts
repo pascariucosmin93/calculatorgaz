@@ -80,8 +80,7 @@ const CSRF_EXEMPT_PATHS = new Set([
   "/api/auth/logout",
   "/api/auth/csrf",
   "/api/auth/reset-password",
-  "/api/auth/reset-password/confirm",
-  "/api/ocr"
+  "/api/auth/reset-password/confirm"
 ]);
 
 function isCsrfExempt(pathname: string): boolean {

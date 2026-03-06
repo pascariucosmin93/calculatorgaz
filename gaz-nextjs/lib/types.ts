@@ -59,5 +59,6 @@ export type AuthUser = {
   email: string | null;
   ownerName: string | null;
   address: string | null;
+  isAdmin: boolean;
   createdAt: string;
 };

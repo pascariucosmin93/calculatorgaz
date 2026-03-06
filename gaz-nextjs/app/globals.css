@@ -68,6 +68,16 @@ button {
   max-width: 100%;
 }
 
+/* Visible focus ring for keyboard navigation */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] :focus-visible {
+  outline-color: #60a5fa;
+}
+
 /* High-contrast primary button usable in dark mode */
 .primary-button {
   background-color: #d1081f !important;

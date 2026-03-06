@@ -64,7 +64,6 @@ export const styles = {
     borderRadius: "0.85rem",
     padding: "0.65rem 0.9rem",
     fontSize: "1rem",
-    outline: "none",
     backgroundColor: "var(--input-bg)",
     color: "var(--text-primary)",
     width: "100%"
@@ -291,7 +290,6 @@ export const styles = {
     borderRadius: "0.9rem",
     padding: "0.85rem",
     fontSize: "1.1rem",
-    outline: "none",
     backgroundColor: "var(--input-bg)",
     color: "var(--text-primary)",
     width: "100%"
@@ -351,7 +349,6 @@ export const styles = {
     borderRadius: "0.85rem",
     padding: "0.65rem 0.9rem",
     fontSize: "1rem",
-    outline: "none",
     backgroundColor: "var(--input-bg)",
     color: "var(--text-primary)",
     width: "100%"
@@ -518,7 +515,13 @@ export const styles = {
   },
   navItem: {
     fontWeight: 500,
-    textAlign: "center" as const
+    textAlign: "center" as const,
+    background: "none",
+    border: "none",
+    padding: "0.4rem 0.2rem",
+    cursor: "pointer" as const,
+    fontSize: "inherit",
+    borderRadius: "0.4rem"
   },
   ocrSection: {
     borderRadius: "1rem",
