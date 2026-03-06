@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const token = crypto.randomBytes(32).toString("hex");
   const res = NextResponse.json({ csrfToken: token });
   res.cookies.set("gaz-csrf", token, {
-    httpOnly: false,
+    httpOnly: true,
     secure: true,
     sameSite: "strict",
     path: "/",

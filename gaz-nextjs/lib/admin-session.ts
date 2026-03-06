@@ -36,8 +36,9 @@ function getAdminHash(): Promise<string> | null {
 }
 
 function getSigningSecret(): Buffer | null {
-  const raw = (process.env.ADMIN_SESSION_SECRET ?? ADMIN_PASSWORD_RAW).trim();
+  const raw = (process.env.ADMIN_SESSION_SECRET ?? "").trim();
   if (!raw) {
+    console.warn("ADMIN_SESSION_SECRET not set — admin sessions disabled.");
     return null;
   }
   return crypto.createHash("sha256").update(raw).digest();
