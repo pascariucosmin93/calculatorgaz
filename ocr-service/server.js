@@ -60,12 +60,17 @@ function toDigitText(value) {
 // and YYY is the decimal part (red digits in red box). We want only XXXXX.
 function extractBySeparator(rawText) {
   if (!rawText) return null;
-  // Look for pattern: 3-6 digits, comma or period, 1-4 digits
-  const match = rawText.match(/(\d{3,6})[,.](\d{1,4})/);
-  if (match) {
-    const intPart = match[1];
-    if (intPart.length >= 4) return parseInt(intPart, 10);
-  }
+  // Collect ALL matches: 3-6 digits, comma or period, 1-4 digits
+  const matches = [...rawText.matchAll(/(\d{3,6})[,.](\d{1,4})/g)];
+  if (matches.length === 0) return null;
+  // Prefer match with exactly INTEGER_DIGITS before separator (most reliable)
+  const exact = matches.find((m) => m[1].length === INTEGER_DIGITS);
+  if (exact) return parseInt(exact[1], 10);
+  // Fall back to longest integer part that is still >= 4 digits
+  const best = matches
+    .filter((m) => m[1].length >= 4)
+    .sort((a, b) => b[1].length - a[1].length)[0];
+  if (best) return parseInt(best[1], 10);
   return null;
 }
 
