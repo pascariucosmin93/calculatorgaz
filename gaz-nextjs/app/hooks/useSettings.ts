@@ -77,7 +77,11 @@ export function useSettings(user: AuthUser | null) {
         vatRate,
         fee: fixedFee
       };
-      localStorage.setItem(getSettingsStorageKey(user.id), JSON.stringify(payload));
+      try {
+        localStorage.setItem(getSettingsStorageKey(user.id), JSON.stringify(payload));
+      } catch {
+        // localStorage may be blocked by browser privacy settings
+      }
     },
     [user?.id, pcs, gasPriceMwh, transportPriceMwh, distributionPriceMwh, cap26PriceMwh, cap6PriceMwh, vatRate, fixedFee]
   );

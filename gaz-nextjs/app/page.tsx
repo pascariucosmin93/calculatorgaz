@@ -55,10 +55,14 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setTheme(savedTheme);
-      return;
+    try {
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
+      if (savedTheme === "light" || savedTheme === "dark") {
+        setTheme(savedTheme);
+        return;
+      }
+    } catch {
+      // localStorage may be blocked by browser privacy settings
     }
     const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
     setTheme(prefersDark ? "dark" : "light");
@@ -67,7 +71,11 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // localStorage may be blocked by browser privacy settings
+    }
   }, [theme]);
 
   const handleThemeToggle = useCallback(() => {

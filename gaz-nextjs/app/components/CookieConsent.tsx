@@ -8,8 +8,12 @@ export type ConsentStatus = "pending" | "accepted" | "refused";
 
 export function getCookieConsent(): ConsentStatus {
   if (typeof window === "undefined") return "pending";
-  const value = localStorage.getItem(CONSENT_KEY);
-  if (value === "accepted" || value === "refused") return value;
+  try {
+    const value = localStorage.getItem(CONSENT_KEY);
+    if (value === "accepted" || value === "refused") return value;
+  } catch {
+    // localStorage may be blocked by browser privacy settings
+  }
   return "pending";
 }
 
@@ -28,14 +32,22 @@ export function CookieConsent({
   }, []);
 
   const handleAccept = useCallback(() => {
-    localStorage.setItem(CONSENT_KEY, "accepted");
+    try {
+      localStorage.setItem(CONSENT_KEY, "accepted");
+    } catch {
+      // localStorage may be blocked by browser privacy settings
+    }
     setStatus("accepted");
     setVisible(false);
     onConsentChange?.("accepted");
   }, [onConsentChange]);
 
   const handleRefuse = useCallback(() => {
-    localStorage.setItem(CONSENT_KEY, "refused");
+    try {
+      localStorage.setItem(CONSENT_KEY, "refused");
+    } catch {
+      // localStorage may be blocked by browser privacy settings
+    }
     setStatus("refused");
     setVisible(false);
     onConsentChange?.("refused");
