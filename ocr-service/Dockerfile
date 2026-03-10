@@ -12,6 +12,7 @@ RUN addgroup --system --gid 1001 appgroup \
 
 COPY --from=deps --chown=appuser:appgroup /app/node_modules ./node_modules
 COPY --chown=appuser:appgroup server.js ./
+COPY --chown=appuser:appgroup extract.js ./
 COPY --chown=appuser:appgroup package.json ./
 
 USER appuser
