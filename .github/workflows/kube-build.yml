@@ -25,7 +25,7 @@ env:
 jobs:
   wait-for-security:
     name: Wait for Security Scans
-    runs-on: docker25
+    runs-on: ubuntu-latest
     steps:
       - name: Security gate check
         run: |
@@ -35,7 +35,7 @@ jobs:
   build-and-push:
     name: Build & Push to Registry
     needs: wait-for-security
-    runs-on: docker25
+    runs-on: ubuntu-latest
     steps:
       - name: Ensure Docker CLI is available
         run: |
