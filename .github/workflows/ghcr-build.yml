@@ -1,0 +1,56 @@
+name: Build & Push to GHCR
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: pascariucosmin93
+
+jobs:
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set SHORT_SHA
+        id: vars
+        run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-6)" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push calculatorgaz
+        run: |
+          IMAGE=$REGISTRY/$OWNER/calculatorgaz
+          docker build \
+            -t $IMAGE:${{ steps.vars.outputs.short_sha }} \
+            -t $IMAGE:latest \
+            ./gaz-nextjs
+          docker push $IMAGE --all-tags
+
+      - name: Build & push ocr-service
+        run: |
+          IMAGE=$REGISTRY/$OWNER/ocr-service
+          docker build \
+            -t $IMAGE:${{ steps.vars.outputs.short_sha }} \
+            -t $IMAGE:latest \
+            ./ocr-service
+          docker push $IMAGE --all-tags
