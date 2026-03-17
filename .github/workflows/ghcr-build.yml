@@ -19,15 +19,18 @@ env:
 
 jobs:
   build-and-push:
-    name: Build & Push Images
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set SHORT_SHA
         id: vars
-        run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-6)" >> "$GITHUB_OUTPUT"
+        run: echo "short_sha=${GITHUB_SHA::6}" >> $GITHUB_OUTPUT
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -36,20 +39,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # IMPORTANT: repo name lowercase (GHCR rule!)
+      - name: Set image names
+        id: img
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "calc=ghcr.io/$OWNER/calculatorgaz" >> $GITHUB_OUTPUT
+          echo "ocr=ghcr.io/$OWNER/ocr-service" >> $GITHUB_OUTPUT
+
       - name: Build & push calculatorgaz
         run: |
-          IMAGE=$REGISTRY/${{ github.repository_owner }}/calculatorgaz
           docker build \
-            -t $IMAGE:${{ steps.vars.outputs.short_sha }} \
-            -t $IMAGE:latest \
+            -t ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.short_sha }} \
+            -t ${{ steps.img.outputs.calc }}:latest \
             ./gaz-nextjs
-          docker push $IMAGE --all-tags
+
+          docker push ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ steps.img.outputs.calc }}:latest
 
       - name: Build & push ocr-service
         run: |
-          IMAGE=$REGISTRY/${{ github.repository_owner }}/ocr-service
           docker build \
-            -t $IMAGE:${{ steps.vars.outputs.short_sha }} \
-            -t $IMAGE:latest \
+            -t ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.short_sha }} \
+            -t ${{ steps.img.outputs.ocr }}:latest \
             ./ocr-service
-          docker push $IMAGE --all-tags
+
+          docker push ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ steps.img.outputs.ocr }}:latest
