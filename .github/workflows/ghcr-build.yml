@@ -16,7 +16,6 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  OWNER: pascariucosmin93
 
 jobs:
   build-and-push:
@@ -39,7 +38,7 @@ jobs:
 
       - name: Build & push calculatorgaz
         run: |
-          IMAGE=$REGISTRY/$OWNER/calculatorgaz
+          IMAGE=$REGISTRY/${{ github.repository_owner }}/calculatorgaz
           docker build \
             -t $IMAGE:${{ steps.vars.outputs.short_sha }} \
             -t $IMAGE:latest \
@@ -48,7 +47,7 @@ jobs:
 
       - name: Build & push ocr-service
         run: |
-          IMAGE=$REGISTRY/$OWNER/ocr-service
+          IMAGE=$REGISTRY/${{ github.repository_owner }}/ocr-service
           docker build \
             -t $IMAGE:${{ steps.vars.outputs.short_sha }} \
             -t $IMAGE:latest \
