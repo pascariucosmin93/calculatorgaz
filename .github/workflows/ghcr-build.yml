@@ -124,9 +124,35 @@ jobs:
         run: |
           set -euo pipefail
 
+          wait_for_http() {
+            local url="$1"
+            local attempts="${2:-30}"
+            for _ in $(seq 1 "$attempts"); do
+              if curl --silent --show-error --fail --retry-all-errors "$url" >/dev/null 2>&1; then
+                return 0
+              fi
+              sleep 2
+            done
+            return 1
+          }
+
+          print_logs() {
+            echo "=== gaz-smoke-ocr logs ==="
+            docker logs gaz-smoke-ocr || true
+            echo "=== gaz-smoke-calc logs ==="
+            docker logs gaz-smoke-calc || true
+            echo "=== gaz-smoke-db logs ==="
+            docker logs gaz-smoke-db || true
+          }
+
           cleanup() {
+            local exit_code=$?
+            if [ "$exit_code" -ne 0 ]; then
+              print_logs
+            fi
             docker rm -f gaz-smoke-db gaz-smoke-calc gaz-smoke-ocr >/dev/null 2>&1 || true
             docker network rm gaz-smoke-net >/dev/null 2>&1 || true
+            exit "$exit_code"
           }
           trap cleanup EXIT
 
@@ -149,8 +175,7 @@ jobs:
             -p 8089:8089 \
             "$OCR_IMAGE"
 
-          curl --retry 20 --retry-delay 2 --retry-connrefused --fail \
-            http://127.0.0.1:8089/health
+          wait_for_http http://127.0.0.1:8089/health 30
 
           docker run -d --name gaz-smoke-calc --network gaz-smoke-net \
             -p 3000:3000 \
@@ -161,8 +186,7 @@ jobs:
             -e SESSION_SERVICE_URL=http://session-service:8088 \
             "$CALC_IMAGE"
 
-          curl --retry 30 --retry-delay 2 --retry-connrefused --fail \
-            http://127.0.0.1:3000/api/health
+          wait_for_http http://127.0.0.1:3000/api/health 45
 
       - name: Push calculatorgaz tags
         run: |
