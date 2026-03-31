@@ -1,223 +1,253 @@
-# GAZ Calculator Platform
+# CalculatorGaz Platform
 
-Gas consumption and cost calculator with OCR, billing, reporting, and microservices architecture.
+`CalculatorGaz` is split across two repositories:
 
-## Architecture
+- `calculatorgaz`
+  application code, CI/CD workflows, and Argo CD application manifests
+- `gaz-gitops`
+  the Helm chart tracked by Argo CD for Kubernetes deployments
 
-```
-                         ┌─────────────────────────────────────────────────────┐
-                         │                   Kubernetes (ns: gaz)              │
-                         │                                                     │
-    Internet             │  ┌─────────────────────────────────────────────┐    │
-       │                 │  │         Cilium Gateway API (.54)            │    │
-       │   DNS (.53)     │  │           gaz-gateway:80                    │    │
-       ▼                 │  └──────┬──────────┬──────────────┬────────────┘    │
-  ┌─────────┐            │         │          │              │                 │
-  │ CloudF. │────────────┼────►    │          │              │                 │
-  └─────────┘            │         │          │              │                 │
-                         │         │ direct   │ direct       │ proxy           │
-                         │         ▼          ▼              ▼                 │
-                         │  ┌───────────┐ ┌────────────┐ ┌──────────────┐     │
-                         │  │ billing   │ │ reporting  │ │calculatorgaz │     │
-                         │  │ :8080     │ │ :8081      │ │ Next.js:3000 │     │
-                         │  │ stateless │ │ stateless  │ │ frontend+API │     │
-                         │  └───────────┘ └─────┬──────┘ └──────┬───────┘     │
-                         │                      │               │              │
-                         │                      │        ┌──────┼──────┐       │
-                         │                      ▼        ▼      ▼      ▼       │
-                         │                ┌─────────┐ ┌────┐ ┌────┐ ┌──────┐  │
-                         │                │reading  │ │auth│ │inv.│ │pw-   │  │
-                         │                │:8084    │ │8083│ │8087│ │reset │  │
-                         │                └────┬────┘ └──┬─┘ └──┬─┘ │8086  │  │
-                         │                     │         │      │   └──┬───┘  │
-                         │                     │         ▼      ▼      ▼       │
-                         │                     │    ┌──────────────────────┐   │
-                         │                     └───►│  /api/internal/*    │   │
-                         │                          │  (Next.js + Prisma) │   │
-                         │                          └─────────┬──────────┘   │
-                         │                                    │               │
-                         │                                    ▼               │
-                         │                             ┌────────────┐         │
-                         │                             │ PostgreSQL │         │
-                         │                             │ (postgress │         │
-                         │                             │  namespace)│         │
-                         │                             └────────────┘         │
-                         │                                                     │
-                         │  Other: session-service:8088 (JWT sign/verify)     │
-                         │         notification-service:8082 (Discord)        │
-                         └─────────────────────────────────────────────────────┘
-```
+This README is a technical sketch of the application and infrastructure so it is easy to understand how the platform is assembled.
 
-### Routing (Cilium Gateway API)
+## High-Level Overview
 
-**Direct la microservicii** (fara Next.js hop):
-| Gateway Path | Backend | Rewrite |
-|---|---|---|
-| `POST /api/calculate` | billing-service:8080 | `/calculate` |
-| `GET /api/reports/monthly` | reporting-service:8081 | `/report/monthly` |
-| `GET /api/reports/export/csv` | reporting-service:8081 | `/report/export.csv` |
-| `GET /api/reports/export/pdf` | reporting-service:8081 | `/report/export.pdf` |
+The delivery flow is:
 
-**Prin Next.js** (necesita sesiune/Prisma):
-`/api/auth/*`, `/api/readings`, `/api/invoices/*`, `/api/ocr`, `/api/admin/*`, `/api/health`, `/api/settings`, `/api/csrf`
+1. you push code to `calculatorgaz`
+2. GitHub Actions runs tests, scanning, image builds, and smoke tests
+3. if everything passes, it publishes versioned images to GHCR using `0.0.x`
+4. the workflow updates `gaz-gitops`
+5. Argo CD detects the new commit in `gaz-gitops` and syncs the cluster
 
-**Blocat la Gateway** (404, fara HTTPRoute):
-`/api/internal/*` - accesibil doar din cluster via `X-Internal-Api-Key`
+There is also a separate manual `promote` workflow:
+
+- it starts from an already tested version such as `0.0.42`
+- it promotes that image to `1.0.0`, `1.0`, `1`, and `latest`
+- it can optionally update `gaz-gitops` to the promoted version
 
 ## Repositories
 
-| Repo | Continut | Forgejo |
-|---|---|---|
-| `gaz` (acesta) | Next.js app + CI workflows + ArgoCD manifests | cosmin/gaz |
-| `gaz-gitops` | Helm chart Kubernetes (values + templates) | cosmin/gaz-gitops |
+### `calculatorgaz`
 
-### Structura `gaz`
-```
-gaz-nextjs/          # Next.js app (frontend + API routes)
-  app/
-    api/             # API endpoints (auth, readings, reports, admin, internal)
-    components/      # React components (ProfileForm, SettingsForm, etc.)
-  lib/               # Business logic (billing, types, formatting, Prisma)
-  prisma/            # DB schema
-  tests/             # Vitest tests
-  middleware.ts      # CSRF, rate limiting, internal API protection
-.github/workflows/   # Forgejo Actions (kube-build, tests-docker, security-scan)
-argocd/              # ArgoCD Application manifests
-```
+Contains:
 
-### Structura `gaz-gitops`
-```
-k8s/chart/
-  Chart.yaml
-  values.yaml           # Toata configuratia + scripturile microserviciilor
-  templates/
-    calculatorgaz/       # Deployment, Service, HPA
-    microservices/       # ConfigMap, Deployment, Service (generate din values)
-    gateway/             # Gateway + HTTPRoutes (Cilium Gateway API)
-    backup/              # CronJobs (DB + Secrets backup la S3)
-    network-policies.yaml
-```
+- the main Next.js application in [`gaz-nextjs`](/Users/cosmin.pascariu/calculatorgaz/gaz-nextjs)
+- the OCR service in [`ocr-service`](/Users/cosmin.pascariu/calculatorgaz/ocr-service)
+- GitHub Actions workflows in [`.github/workflows`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows)
+- Argo CD manifests in [`argocd`](/Users/cosmin.pascariu/calculatorgaz/argocd)
 
-## Services
+### `gaz-gitops`
 
-| Service | Port | Tip | Rol |
-|---|---:|---|---|
-| `calculatorgaz` | 3000 | Next.js | Frontend + API proxy + Prisma |
-| `billing-service` | 8080 | Stateless | Calcul cost gaz (m3 → kWh → MWh → lei) |
-| `reporting-service` | 8081 | Stateless | Rapoarte lunare, CSV/PDF export |
-| `reading-service` | 8084 | Proxy | CRUD citiri (via /api/internal) |
-| `auth-service` | 8083 | Proxy | Signup/login/profile (via /api/internal) |
-| `invoice-service` | 8087 | Proxy | Upload facturi PDF (via /api/internal) |
-| `password-reset-service` | 8086 | Proxy | Reset parola (via /api/internal) |
-| `session-service` | 8088 | Stateless | JWT sign/verify (HS256) |
-| `notification-service` | 8082 | Stateless | Discord webhooks |
+Contains:
 
-**Stateless** = self-contained, nu apeleaza /api/internal
-**Proxy** = forward la Next.js /api/internal/* cu `X-Internal-Api-Key`
+- the Helm chart in [`k8s/chart`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart)
+- image configuration, resources, gateway settings, and microservice definitions
 
-## Database (PostgreSQL + Prisma)
+Argo CD should track `gaz-gitops`, not the application repository.
 
-**Models**: `User`, `Reading`, `PasswordResetToken`
-- Users: username, email, passwordHash (bcryptjs), address
-- Readings: meter values, consumption (m3/kWh), costs, linked to user
-- PasswordResetToken: hashed token, expiration, linked to user
+## Application Architecture
 
-Host: `postgres.postgress.svc.cluster.local:5432`, DB: `gaz`
+The platform has two main runtime components:
 
-## External Systems
+- `calculatorgaz`
+  the primary Next.js application that provides the UI, API routes, and PostgreSQL access through Prisma
+- `ocr-service`
+  a separate internal HTTP service used for OCR
 
-| System | Endpoint | Rol |
-|---|---|---|
-| PostgreSQL | `postgres.postgress.svc.cluster.local` | Main datastore |
-| SeaweedFS S3 | `https://s3.galeata.devjobs.ro` | Stocare facturi (bucket: `facturi`) |
-| Discord Webhooks | secret | Notificari + link-uri reset parola |
-| Container Registry | `registry.infraejobs.ro` | Docker images |
+The Helm chart also generates several small support services from `values.yaml`:
 
-## Security
+- `billing-service`
+- `reporting-service`
+- `auth-service`
+- `reading-service`
+- `invoice-service`
+- `password-reset-service`
+- `notification-service`
+- `session-service`
 
-### Middleware (middleware.ts)
-- **Rate limiting**: 10 req/min pe IP pentru login/signup/reset
-- **CSRF**: token in cookie `gaz-csrf`, validat via header `x-csrf-token`
-- **Internal API**: `/api/internal/*` blocat fara header `X-Internal-Api-Key`
-- **Reset domain**: `RESET_PASSWORD_BASE_URL` separat pentru link-uri reset
+Some of these are fully stateless, while others act as thin proxies toward internal Next.js endpoints.
 
-### Network Policies
-- Default deny ingress in namespace
-- Fiecare microserviciu: ingress doar de la calculatorgaz (+ kube-system pentru servicii gateway-exposed)
-- Egress: DNS + callback la calculatorgaz + inter-service + PostgreSQL + HTTPS extern
+## Request Flow
 
-### Security Scanning (CI)
-- **NPM Audit**: vulnerabilitati in dependinte
-- **Semgrep SAST**: analiza statica (OWASP, TypeScript)
-- **Trivy**: scan filesystem + Docker image (CRITICAL, HIGH)
-- **SBOM**: SPDX + CycloneDX (Syft)
-- **License Check**: conformitate licente open-source
+At a logical level:
 
-## CI/CD
-
-### Forgejo Actions (`.github/workflows/`)
-
-| Workflow | Runner | Trigger | Rol |
-|---|---|---|---|
-| `security-scan.yml` | `docker25` | PR, push main | NPM audit, Semgrep, Trivy, SBOM |
-| `kube-build.yml` | `docker25` | push main | Build Docker → push registry → update gitops tag |
-| `tests-docker.yml` | `docker-tests` | PR, push main | Vitest tests |
-
-### GitOps Flow
-```
-Push to gaz/main
-  → Forgejo Actions: test + security scan + build
-  → kube-build: push image, update tag in gaz-gitops/values.yaml
-  → ArgoCD: auto-sync gaz-gitops Helm chart to cluster
-```
-
-ArgoCD: auto-sync cu `prune: true` + `selfHeal: true`
+1. a user reaches the public hostname
+2. traffic enters the cluster through Cloudflare and the Kubernetes routing layer
+3. the gateway routes the request:
+   - either directly to backend microservices
+   - or to the main `calculatorgaz` application
+4. `calculatorgaz` talks to:
+   - PostgreSQL for persistent data
+   - `ocr-service` for OCR processing
+   - internal or external services for invoices, notifications, and sessions
 
 ## Kubernetes
 
-- **Namespace**: `gaz`
-- **Ingress**: Cilium Gateway API pe `10.40.10.54` + LoadBalancer pe `10.40.10.53`
-- **IP Pool**: pool-2 (`10.40.10.50-110`), BGP advertised
-- **HPA**: calculatorgaz, min 1 / max 10, CPU 70%, Memory 70%
+The cluster setup includes:
 
-### Secrets necesare
+- the `gaz` namespace
+- a Helm chart for the application and support services
+- `LoadBalancer` services for components that must be advertised through BGP
+- Gateway API resources for HTTP routing
+- Argo CD for GitOps delivery
 
-`calculatorgaz-secrets`:
-- `DATABASE_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+The Helm chart in `gaz-gitops` defines:
+
+- deployments for `calculatorgaz` and `ocr-service`
+- generated deployments and services for support microservices
+- Gateway and HTTPRoutes
+- network policies
+- backup cronjobs
+
+Relevant files:
+
+- [`values.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/values.yaml)
+- [`templates/calculatorgaz/deployment.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/calculatorgaz/deployment.yaml)
+- [`templates/ocr-service/deployment.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/ocr-service/deployment.yaml)
+- [`templates/gateway/gateway.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/gateway/gateway.yaml)
+- [`templates/gateway/httproutes.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/gateway/httproutes.yaml)
+
+## Argo CD
+
+The Argo CD application manifests are in:
+
+- [`application-calculatorgaz.yaml`](/Users/cosmin.pascariu/calculatorgaz/argocd/application-calculatorgaz.yaml)
+- [`application-calculatorgaz-test.yaml`](/Users/cosmin.pascariu/calculatorgaz/argocd/application-calculatorgaz-test.yaml)
+
+Their role is to tell Argo CD:
+
+- which repository to track
+- which path inside the repository to apply
+- which namespace to deploy into
+
+In practice, the deployment source of truth is `gaz-gitops`.
+
+## CI/CD
+
+Important workflows:
+
+- [`ghcr-build.yml`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows/ghcr-build.yml)
+  the main push-to-main pipeline
+- [`promote.yml`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows/promote.yml)
+  the manual promotion workflow
+- [`security-scan.yml`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows/security-scan.yml)
+  additional security scanning
+- [`tests-docker.yml`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows/tests-docker.yml)
+  standalone test execution
+
+### Main Pipeline
+
+On every push to `main`, the main workflow performs:
+
+1. unit tests
+2. dependency scanning
+3. Docker image builds
+4. smoke tests
+   it starts `postgres`, `ocr-service`, and `calculatorgaz`
+5. image push to GHCR
+6. `gaz-gitops` update
+
+The automatically published tags are:
+
+- a short `sha` tag for traceability
+- a `0.0.x` tag for automatic deployment
+
+`latest` is no longer used by the automatic pipeline.
+
+### Manual Promotion
+
+The `promote.yml` workflow takes:
+
+- `source_tag`, for example `0.0.42`
+- `release_version`, for example `1.0.0`
+- `update_gitops`, a boolean
+
+It then creates:
+
+- `1.0.0`
+- `1.0`
+- `1`
+- `latest`
+
+This gives you:
+
+- `0.0.x` for automatic delivery
+- `1.x.x` for stable manual releases
+
+## Registry
+
+Images are published to GHCR:
+
+- `ghcr.io/pascariucosmin93/calculatorgaz`
+- `ghcr.io/pascariucosmin93/ocr-service`
+
+If you want to avoid `imagePullSecret` in the cluster, the simplest option is to keep these GHCR images public.
+
+## Data and External Dependencies
+
+Main external dependencies:
+
+- PostgreSQL
+- SeaweedFS / S3-compatible object storage
+- Discord webhooks
+- Cloudflare for public access
+- Argo CD for GitOps deployment
+
+## Required Secrets
+
+For GitHub Actions in `calculatorgaz`, the repository needs:
+
+- `GITOPS_PUSH_USER`
+- `GITOPS_PUSH_TOKEN`
+
+Inside Kubernetes, the application needs secrets such as:
+
+- `DATABASE_URL`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
 - `ADMIN_PASSWORD`
-- `DISCORD_RESET_WEBHOOK_URL`
-- `SEAWEED_S3_ACCESS_KEY`, `SEAWEED_S3_SECRET_KEY`
-- `INTERNAL_API_KEY`, `JWT_SECRET`
+- `INTERNAL_API_KEY`
+- S3 credentials
+- webhook and operational secrets
 
-`notification-service-secrets`:
-- `DISCORD_WEBHOOK_URL`
+## Quick Structure
 
-`backup-s3-credentials`:
-- S3 credentials pentru backup CronJobs
-
-### Backup CronJobs
-- **DB dump**: zilnic la 02:00, retenție 30 zile → S3 `backup-db`
-- **Secrets export**: zilnic la 03:00, retenție 30 zile → S3 `backup-secrets-gaz`
-
-## Operations
-
-```bash
-# Status
-kubectl -n gaz get deploy,pod,svc
-kubectl -n gaz get gateway,httproute
-kubectl -n gaz get hpa
-kubectl -n gaz top pod
-
-# Logs
-kubectl -n gaz logs deploy/calculatorgaz
-kubectl -n gaz logs deploy/billing-service
-kubectl -n gaz logs deploy/reporting-service
-
-# Gateway check
-kubectl -n gaz get gateway          # ADDRESS + Programmed: True
-kubectl -n gaz get httproute        # Toate rutele active
-
-# Common issue: CreateContainerConfigError = missing secret
-kubectl -n gaz describe pod <pod-name>
-kubectl -n gaz get secret
+```text
+calculatorgaz/
+├── .github/workflows/
+│   ├── ghcr-build.yml
+│   ├── promote.yml
+│   ├── security-scan.yml
+│   └── tests-docker.yml
+├── argocd/
+│   ├── application-calculatorgaz.yaml
+│   └── application-calculatorgaz-test.yaml
+├── gaz-nextjs/
+│   ├── app/
+│   ├── lib/
+│   ├── prisma/
+│   └── tests/
+└── ocr-service/
 ```
+
+```text
+gaz-gitops/
+└── k8s/chart/
+    ├── Chart.yaml
+    ├── values.yaml
+    └── templates/
+        ├── calculatorgaz/
+        ├── gateway/
+        ├── microservices/
+        ├── ocr-service/
+        ├── backup/
+        └── network-policies.yaml
+```
+
+## In Short
+
+- code and CI/CD live in `calculatorgaz`
+- deployment state and runtime configuration live in `gaz-gitops`
+- Argo CD syncs `gaz-gitops`
+- pushing to `main` produces a `0.0.x` deployment version
+- manual promotion produces a stable `1.x.x` release
