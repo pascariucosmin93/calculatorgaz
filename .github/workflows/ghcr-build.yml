@@ -93,6 +93,7 @@ jobs:
           fi
 
           SHORT_SHA="${COMMIT_SHA::6}"
+          export SHORT_SHA
           AUTH_REPO=$(echo "$GITOPS_REPO" | sed "s#https://#https://${GITOPS_PUSH_USER}:${GITOPS_PUSH_TOKEN}@#")
           WORKDIR=$(mktemp -d)
 
