@@ -25,7 +25,7 @@ concurrency:
 jobs:
   npm-audit:
     name: NPM Audit (Dependencies)
-    runs-on: docker-tests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload npm audit results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: npm-audit-report
           path: gaz-nextjs/npm-audit.json
@@ -74,7 +74,7 @@ jobs:
 
   semgrep-sast:
     name: Semgrep SAST (Code Analysis)
-    runs-on: docker-tests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -119,7 +119,7 @@ jobs:
 
       - name: Upload Semgrep results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: semgrep-report
           path: gaz-nextjs/semgrep-report.json
@@ -127,7 +127,7 @@ jobs:
 
   trivy-filesystem:
     name: Trivy Filesystem Scan
-    runs-on: docker-tests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload Trivy filesystem artifact
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-filesystem-report
           path: trivy-filesystem.sarif
@@ -183,7 +183,7 @@ jobs:
 
   sbom-generation:
     name: Generate SBOM (Syft)
-    runs-on: docker-tests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -208,7 +208,7 @@ jobs:
 
       - name: Upload SBOM artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sbom-reports
           path: |
@@ -218,7 +218,7 @@ jobs:
 
   license-check:
     name: License Compliance Check
-    runs-on: docker-tests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -246,7 +246,7 @@ jobs:
 
       - name: Upload license report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: license-report
           path: gaz-nextjs/licenses.json
@@ -255,11 +255,11 @@ jobs:
   summary:
     name: Security Summary
     needs: [npm-audit, semgrep-sast, trivy-filesystem, sbom-generation, license-check]
-    runs-on: docker-tests
+    runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Download all reports
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Create summary
         run: |
@@ -274,7 +274,7 @@ jobs:
   check-status:
     name: Security Gate - Pass/Fail
     needs: [npm-audit, semgrep-sast, trivy-filesystem, sbom-generation, license-check, summary]
-    runs-on: docker-tests
+    runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Check security job status
