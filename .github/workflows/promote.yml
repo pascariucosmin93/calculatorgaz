@@ -1,0 +1,140 @@
+name: Promote Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: "Existing source tag to promote, for example 0.0.42"
+        required: true
+        type: string
+      release_version:
+        description: "Release version, for example 1.0.0"
+        required: true
+        type: string
+      update_gitops:
+        description: "Also update gaz-gitops to the promoted release"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  GITOPS_REPO: https://github.com/pascariucosmin93/gaz-gitops.git
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate release version
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release_version must match x.y.z"
+            exit 1
+          fi
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image names
+        id: img
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "calc=ghcr.io/$OWNER/calculatorgaz" >> $GITHUB_OUTPUT
+          echo "ocr=ghcr.io/$OWNER/ocr-service" >> $GITHUB_OUTPUT
+
+      - name: Promote image tags
+        env:
+          SOURCE_TAG: ${{ inputs.source_tag }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          CALC_IMAGE: ${{ steps.img.outputs.calc }}
+          OCR_IMAGE: ${{ steps.img.outputs.ocr }}
+        run: |
+          set -euo pipefail
+
+          MAJOR="${RELEASE_VERSION%%.*}"
+          MINOR="${RELEASE_VERSION%.*}"
+
+          for IMAGE in "$CALC_IMAGE" "$OCR_IMAGE"; do
+            docker pull "$IMAGE:$SOURCE_TAG"
+            docker tag "$IMAGE:$SOURCE_TAG" "$IMAGE:$RELEASE_VERSION"
+            docker tag "$IMAGE:$SOURCE_TAG" "$IMAGE:$MAJOR"
+            docker tag "$IMAGE:$SOURCE_TAG" "$IMAGE:$MINOR"
+            docker tag "$IMAGE:$SOURCE_TAG" "$IMAGE:latest"
+
+            docker push "$IMAGE:$RELEASE_VERSION"
+            docker push "$IMAGE:$MAJOR"
+            docker push "$IMAGE:$MINOR"
+            docker push "$IMAGE:latest"
+          done
+
+      - name: Update gaz-gitops to promoted version
+        if: ${{ inputs.update_gitops }}
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          GITOPS_PUSH_USER: ${{ secrets.GITOPS_PUSH_USER }}
+          GITOPS_PUSH_TOKEN: ${{ secrets.GITOPS_PUSH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GITOPS_PUSH_USER:-}" ] || [ -z "${GITOPS_PUSH_TOKEN:-}" ]; then
+            echo "GITOPS_PUSH_USER / GITOPS_PUSH_TOKEN not set."
+            exit 1
+          fi
+
+          AUTH_REPO=$(echo "$GITOPS_REPO" | sed "s#https://#https://${GITOPS_PUSH_USER}:${GITOPS_PUSH_TOKEN}@#")
+          WORKDIR=$(mktemp -d)
+
+          git clone "$AUTH_REPO" "$WORKDIR/gitops"
+          cd "$WORKDIR/gitops"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          release_version = os.environ["RELEASE_VERSION"]
+          path = Path("k8s/chart/values.yaml")
+          data = path.read_text()
+          data = re.sub(
+              r'(calculatorgaz:\n(?:.*\n)*?\s+tag:\s*)"[^"]+"',
+              rf'\1"{release_version}"',
+              data,
+              count=1,
+          )
+          data = re.sub(
+              r'(ocrService:\n(?:.*\n)*?\s+tag:\s*)"[^"]+"',
+              rf'\1"{release_version}"',
+              data,
+              count=1,
+          )
+          path.write_text(data)
+          PY
+
+          if git diff --quiet -- k8s/chart/values.yaml; then
+            echo "gaz-gitops already on release ${RELEASE_VERSION}"
+            exit 0
+          fi
+
+          git config user.name "Gaz CI Bot"
+          git config user.email "gaz-ci-bot@users.noreply.github.com"
+          git add k8s/chart/values.yaml
+          git commit -m "chore(gitops): promote release ${RELEASE_VERSION}"
+          git push origin main

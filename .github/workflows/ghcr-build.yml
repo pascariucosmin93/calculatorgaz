@@ -23,7 +23,49 @@ env:
   GITOPS_REPO: https://github.com/pascariucosmin93/gaz-gitops.git
 
 jobs:
-  build-and-push:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "gaz-nextjs/package-lock.json"
+
+      - name: Run unit tests
+        working-directory: gaz-nextjs
+        run: |
+          npm ci --ignore-scripts
+          npm test
+
+  dependency-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "gaz-nextjs/package-lock.json"
+
+      - name: Run npm audit
+        working-directory: gaz-nextjs
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          npm audit --audit-level=critical
+
+  build-test-push:
+    needs:
+      - unit-tests
+      - dependency-scan
     runs-on: ubuntu-latest
 
     permissions:
@@ -40,9 +82,11 @@ jobs:
           cache: "npm"
           cache-dependency-path: "gaz-nextjs/package-lock.json"
 
-      - name: Set SHORT_SHA
+      - name: Set version metadata
         id: vars
-        run: echo "short_sha=${GITHUB_SHA::6}" >> $GITHUB_OUTPUT
+        run: |
+          echo "short_sha=${GITHUB_SHA::6}" >> $GITHUB_OUTPUT
+          echo "dev_version=0.0.${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -59,29 +103,80 @@ jobs:
           echo "calc=ghcr.io/$OWNER/calculatorgaz" >> $GITHUB_OUTPUT
           echo "ocr=ghcr.io/$OWNER/ocr-service" >> $GITHUB_OUTPUT
 
-      - name: Build & push calculatorgaz
+      - name: Build calculatorgaz image
         run: |
           docker build \
             -t ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.short_sha }} \
-            -t ${{ steps.img.outputs.calc }}:latest \
+            -t ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.dev_version }} \
             ./gaz-nextjs
 
-          docker push ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.short_sha }}
-          docker push ${{ steps.img.outputs.calc }}:latest
-
-      - name: Build & push ocr-service
+      - name: Build ocr-service image
         run: |
           docker build \
             -t ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.short_sha }} \
-            -t ${{ steps.img.outputs.ocr }}:latest \
+            -t ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.dev_version }} \
             ./ocr-service
 
+      - name: Smoke test calculatorgaz and ocr-service
+        env:
+          CALC_IMAGE: ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.dev_version }}
+          OCR_IMAGE: ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.dev_version }}
+        run: |
+          set -euo pipefail
+
+          cleanup() {
+            docker rm -f gaz-smoke-db gaz-smoke-calc gaz-smoke-ocr >/dev/null 2>&1 || true
+            docker network rm gaz-smoke-net >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker network create gaz-smoke-net
+
+          docker run -d --name gaz-smoke-db --network gaz-smoke-net \
+            -e POSTGRES_USER=gaz \
+            -e POSTGRES_PASSWORD=gaz \
+            -e POSTGRES_DB=gaz \
+            postgres:16-alpine
+
+          for _ in $(seq 1 30); do
+            if docker exec gaz-smoke-db pg_isready -U gaz -d gaz >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+
+          docker run -d --name gaz-smoke-ocr --network gaz-smoke-net \
+            -p 8089:8089 \
+            "$OCR_IMAGE"
+
+          curl --retry 20 --retry-delay 2 --retry-connrefused --fail \
+            http://127.0.0.1:8089/health
+
+          docker run -d --name gaz-smoke-calc --network gaz-smoke-net \
+            -p 3000:3000 \
+            -e DATABASE_URL=postgresql://gaz:gaz@gaz-smoke-db:5432/gaz \
+            -e ADMIN_EMAIL=admin@gmail.com \
+            -e ADMIN_PASSWORD=test-admin-password \
+            -e ADMIN_SESSION_SECRET=test-admin-session-secret \
+            -e SESSION_SERVICE_URL=http://session-service:8088 \
+            "$CALC_IMAGE"
+
+          curl --retry 30 --retry-delay 2 --retry-connrefused --fail \
+            http://127.0.0.1:3000/api/health
+
+      - name: Push calculatorgaz tags
+        run: |
+          docker push ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.dev_version }}
+
+      - name: Push ocr-service tags
+        run: |
           docker push ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.short_sha }}
-          docker push ${{ steps.img.outputs.ocr }}:latest
+          docker push ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.dev_version }}
 
       - name: Update gaz-gitops image tags
         env:
-          COMMIT_SHA: ${{ github.sha }}
+          DEV_VERSION: ${{ steps.vars.outputs.dev_version }}
           GITOPS_PUSH_USER: ${{ secrets.GITOPS_PUSH_USER }}
           GITOPS_PUSH_TOKEN: ${{ secrets.GITOPS_PUSH_TOKEN }}
         run: |
@@ -92,8 +187,6 @@ jobs:
             exit 0
           fi
 
-          SHORT_SHA="${COMMIT_SHA::6}"
-          export SHORT_SHA
           AUTH_REPO=$(echo "$GITOPS_REPO" | sed "s#https://#https://${GITOPS_PUSH_USER}:${GITOPS_PUSH_TOKEN}@#")
           WORKDIR=$(mktemp -d)
 
@@ -111,16 +204,16 @@ jobs:
           for old, new in replacements.items():
               data = data.replace(old, new)
           import re, os
-          short_sha = os.environ["SHORT_SHA"]
+          dev_version = os.environ["DEV_VERSION"]
           data = re.sub(
               r'(calculatorgaz:\n(?:.*\n)*?\s+tag:\s*)"[^"]+"',
-              rf'\1"{short_sha}"',
+              rf'\1"{dev_version}"',
               data,
               count=1,
           )
           data = re.sub(
               r'(ocrService:\n(?:.*\n)*?\s+tag:\s*)"[^"]+"',
-              rf'\1"{short_sha}"',
+              rf'\1"{dev_version}"',
               data,
               count=1,
           )
@@ -135,5 +228,5 @@ jobs:
           git config user.name "Gaz CI Bot"
           git config user.email "gaz-ci-bot@users.noreply.github.com"
           git add k8s/chart/values.yaml
-          git commit -m "chore(gitops): promote images to ${SHORT_SHA}"
+          git commit -m "chore(gitops): deploy dev version ${DEV_VERSION}"
           git push origin main
