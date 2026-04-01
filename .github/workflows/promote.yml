@@ -58,32 +58,28 @@ jobs:
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "calc=ghcr.io/$OWNER/calculatorgaz" >> $GITHUB_OUTPUT
-          echo "ocr=ghcr.io/$OWNER/ocr-service" >> $GITHUB_OUTPUT
 
       - name: Promote image tags
         env:
           SOURCE_TAG: ${{ inputs.source_tag }}
           RELEASE_VERSION: ${{ inputs.release_version }}
           CALC_IMAGE: ${{ steps.img.outputs.calc }}
-          OCR_IMAGE: ${{ steps.img.outputs.ocr }}
         run: |
           set -euo pipefail
 
           MAJOR="${RELEASE_VERSION%%.*}"
           MINOR="${RELEASE_VERSION%.*}"
 
-          for IMAGE in "$CALC_IMAGE" "$OCR_IMAGE"; do
-            docker pull "$IMAGE:$SOURCE_TAG"
-            docker tag "$IMAGE:$SOURCE_TAG" "$IMAGE:$RELEASE_VERSION"
-            docker tag "$IMAGE:$SOURCE_TAG" "$IMAGE:$MAJOR"
-            docker tag "$IMAGE:$SOURCE_TAG" "$IMAGE:$MINOR"
-            docker tag "$IMAGE:$SOURCE_TAG" "$IMAGE:latest"
+          docker pull "$CALC_IMAGE:$SOURCE_TAG"
+          docker tag "$CALC_IMAGE:$SOURCE_TAG" "$CALC_IMAGE:$RELEASE_VERSION"
+          docker tag "$CALC_IMAGE:$SOURCE_TAG" "$CALC_IMAGE:$MAJOR"
+          docker tag "$CALC_IMAGE:$SOURCE_TAG" "$CALC_IMAGE:$MINOR"
+          docker tag "$CALC_IMAGE:$SOURCE_TAG" "$CALC_IMAGE:latest"
 
-            docker push "$IMAGE:$RELEASE_VERSION"
-            docker push "$IMAGE:$MAJOR"
-            docker push "$IMAGE:$MINOR"
-            docker push "$IMAGE:latest"
-          done
+          docker push "$CALC_IMAGE:$RELEASE_VERSION"
+          docker push "$CALC_IMAGE:$MAJOR"
+          docker push "$CALC_IMAGE:$MINOR"
+          docker push "$CALC_IMAGE:latest"
 
       - name: Update gaz-gitops to promoted version
         if: ${{ inputs.update_gitops }}
@@ -115,12 +111,6 @@ jobs:
           data = path.read_text()
           data = re.sub(
               r'(calculatorgaz:\n(?:.*\n)*?\s+tag:\s*)"[^"]+"',
-              rf'\1"{release_version}"',
-              data,
-              count=1,
-          )
-          data = re.sub(
-              r'(ocrService:\n(?:.*\n)*?\s+tag:\s*)"[^"]+"',
               rf'\1"{release_version}"',
               data,
               count=1,

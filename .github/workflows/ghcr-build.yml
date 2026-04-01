@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - "gaz-nextjs/**"
-      - "ocr-service/**"
       - ".github/workflows/ghcr-build.yml"
   workflow_dispatch:
 
@@ -101,7 +100,6 @@ jobs:
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "calc=ghcr.io/$OWNER/calculatorgaz" >> $GITHUB_OUTPUT
-          echo "ocr=ghcr.io/$OWNER/ocr-service" >> $GITHUB_OUTPUT
 
       - name: Build calculatorgaz image
         run: |
@@ -110,17 +108,9 @@ jobs:
             -t ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.dev_version }} \
             ./gaz-nextjs
 
-      - name: Build ocr-service image
-        run: |
-          docker build \
-            -t ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.short_sha }} \
-            -t ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.dev_version }} \
-            ./ocr-service
-
-      - name: Smoke test calculatorgaz and ocr-service
+      - name: Smoke test calculatorgaz
         env:
           CALC_IMAGE: ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.dev_version }}
-          OCR_IMAGE: ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.dev_version }}
         run: |
           set -euo pipefail
 
@@ -137,8 +127,6 @@ jobs:
           }
 
           print_logs() {
-            echo "=== gaz-smoke-ocr logs ==="
-            docker logs gaz-smoke-ocr || true
             echo "=== gaz-smoke-calc logs ==="
             docker logs gaz-smoke-calc || true
             echo "=== gaz-smoke-db logs ==="
@@ -150,7 +138,7 @@ jobs:
             if [ "$exit_code" -ne 0 ]; then
               print_logs
             fi
-            docker rm -f gaz-smoke-db gaz-smoke-calc gaz-smoke-ocr >/dev/null 2>&1 || true
+            docker rm -f gaz-smoke-db gaz-smoke-calc >/dev/null 2>&1 || true
             docker network rm gaz-smoke-net >/dev/null 2>&1 || true
             exit "$exit_code"
           }
@@ -171,12 +159,6 @@ jobs:
             sleep 2
           done
 
-          docker run -d --name gaz-smoke-ocr --network gaz-smoke-net \
-            -p 8089:8089 \
-            "$OCR_IMAGE"
-
-          wait_for_http http://127.0.0.1:8089/health 30
-
           docker run -d --name gaz-smoke-calc --network gaz-smoke-net \
             -p 3000:3000 \
             -e DATABASE_URL=postgresql://gaz:gaz@gaz-smoke-db:5432/gaz \
@@ -192,11 +174,6 @@ jobs:
         run: |
           docker push ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.short_sha }}
           docker push ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.dev_version }}
-
-      - name: Push ocr-service tags
-        run: |
-          docker push ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.short_sha }}
-          docker push ${{ steps.img.outputs.ocr }}:${{ steps.vars.outputs.dev_version }}
 
       - name: Update gaz-gitops image tags
         env:
@@ -223,7 +200,6 @@ jobs:
           data = path.read_text()
           replacements = {
               'repository: registry.infraejobs.ro/infra/gaz/calculatorgaz': 'repository: ghcr.io/pascariucosmin93/calculatorgaz',
-              'repository: registry.infraejobs.ro/infra/gaz/ocr-service': 'repository: ghcr.io/pascariucosmin93/ocr-service',
           }
           for old, new in replacements.items():
               data = data.replace(old, new)
@@ -231,12 +207,6 @@ jobs:
           dev_version = os.environ["DEV_VERSION"]
           data = re.sub(
               r'(calculatorgaz:\n(?:.*\n)*?\s+tag:\s*)"[^"]+"',
-              rf'\1"{dev_version}"',
-              data,
-              count=1,
-          )
-          data = re.sub(
-              r'(ocrService:\n(?:.*\n)*?\s+tag:\s*)"[^"]+"',
               rf'\1"{dev_version}"',
               data,
               count=1,
