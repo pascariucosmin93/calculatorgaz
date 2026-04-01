@@ -8,6 +8,8 @@ const SESSION_SERVICE_URL =
   process.env.SESSION_SERVICE_URL?.trim() ??
   "http://session-service:8088";
 
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
+
 export async function POST(request: Request) {
   try {
     const body = await request.text();
@@ -38,6 +40,9 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json" }
       });
     }
+
+    userData.isAdmin =
+      ADMIN_EMAIL !== "" && String(userData.email ?? "").toLowerCase() === ADMIN_EMAIL;
 
     try {
       const sessionRes = await fetch(`${SESSION_SERVICE_URL.replace(/\/+$/, "")}/session/sign`, {

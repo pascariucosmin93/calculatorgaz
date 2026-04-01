@@ -17,27 +17,51 @@ async function bootstrapAdminUser() {
     return;
   }
 
-  const existing = await prisma.user.findUnique({
-    where: { email: ADMIN_EMAIL },
-    select: { id: true }
-  });
+  const adminUsername = getAdminUsername(ADMIN_EMAIL);
+  const [emailMatch, usernameMatch] = await Promise.all([
+    prisma.user.findUnique({
+      where: { email: ADMIN_EMAIL },
+      select: { id: true, username: true, email: true }
+    }),
+    prisma.user.findUnique({
+      where: { username: adminUsername },
+      select: { id: true, username: true, email: true }
+    })
+  ]);
 
-  if (existing) {
+  if (emailMatch && usernameMatch && emailMatch.id !== usernameMatch.id) {
+    throw new Error(
+      `Admin bootstrap conflict: email ${ADMIN_EMAIL} and username ${adminUsername} belong to different users.`
+    );
+  }
+
+  const existing = emailMatch ?? usernameMatch;
+  if (!existing) {
+    const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+
+    await prisma.user.create({
+      data: {
+        username: adminUsername,
+        email: ADMIN_EMAIL,
+        ownerName: ADMIN_OWNER_NAME,
+        passwordHash
+      }
+    });
+
+    console.log(`Bootstrapped admin user ${ADMIN_EMAIL}`);
     return;
   }
 
-  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-
-  await prisma.user.create({
+  await prisma.user.update({
+    where: { id: existing.id },
     data: {
-      username: getAdminUsername(ADMIN_EMAIL),
+      username: adminUsername,
       email: ADMIN_EMAIL,
-      ownerName: ADMIN_OWNER_NAME,
-      passwordHash
+      ownerName: ADMIN_OWNER_NAME
     }
   });
 
-  console.log(`Bootstrapped admin user ${ADMIN_EMAIL}`);
+  console.log(`Reconciled admin user ${ADMIN_EMAIL}`);
 }
 
 export async function ensureAdminUser() {

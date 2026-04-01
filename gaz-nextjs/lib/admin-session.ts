@@ -3,14 +3,11 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { isErrorResponse, verifySession } from "@/lib/auth";
+import prisma from "@/lib/prisma";
 
 export const ADMIN_SESSION_COOKIE = "gaz-admin-session";
 const ADMIN_SESSION_MAX_AGE_SECONDS = 15 * 60;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
-const ADMIN_PASSWORD_RAW = process.env.ADMIN_PASSWORD ?? "";
-
-let adminPasswordHash: string | null = null;
-let hashPromise: Promise<string> | null = null;
 
 type AdminSessionPayload = {
   sub: string;
@@ -22,18 +19,6 @@ type SessionIdentity = {
   id: string;
   email: string;
 };
-
-function getAdminHash(): Promise<string> | null {
-  if (adminPasswordHash) return Promise.resolve(adminPasswordHash);
-  if (hashPromise) return hashPromise;
-  if (!ADMIN_PASSWORD_RAW || ADMIN_PASSWORD_RAW.length === 0) return null;
-
-  hashPromise = bcrypt.hash(ADMIN_PASSWORD_RAW, 10).then((hash) => {
-    adminPasswordHash = hash;
-    return hash;
-  });
-  return hashPromise;
-}
 
 function getSigningSecret(): Buffer | null {
   const raw = (process.env.ADMIN_SESSION_SECRET ?? "").trim();
@@ -133,11 +118,18 @@ export function clearAdminSessionCookie(response: NextResponse) {
 }
 
 export async function verifyAdminPassword(password: string): Promise<boolean> {
-  const hash = await getAdminHash();
-  if (!hash || !ADMIN_EMAIL) return false;
+  if (!ADMIN_EMAIL) return false;
   const normalized = password.trim();
   if (!normalized) return false;
-  return bcrypt.compare(normalized, hash);
+
+  const adminUser = await prisma.user.findUnique({
+    where: { email: ADMIN_EMAIL },
+    select: { passwordHash: true }
+  });
+
+  if (!adminUser?.passwordHash) return false;
+
+  return bcrypt.compare(normalized, adminUser.passwordHash);
 }
 
 export async function requireAdminSession(request: NextRequest | Request) {

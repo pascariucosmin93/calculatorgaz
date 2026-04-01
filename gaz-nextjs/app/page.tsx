@@ -198,15 +198,34 @@ export default function Home() {
             adminPassword={admin.adminAuthPassword}
             isAuthenticated={admin.adminSessionActive}
             users={admin.adminUsers}
+            newUsername={admin.newUsername}
+            newEmail={admin.newEmail}
+            newPassword={admin.newPassword}
+            newOwnerName={admin.newOwnerName}
+            newAddress={admin.newAddress}
+            currentAdminPassword={admin.currentAdminPassword}
+            nextAdminPassword={admin.nextAdminPassword}
+            userPasswordDrafts={admin.userPasswordDrafts}
             loading={admin.adminLoading}
             error={admin.adminError}
             success={admin.adminSuccess}
             onAdminPasswordChange={admin.onAdminPasswordChange}
+            onNewUsernameChange={admin.onNewUsernameChange}
+            onNewEmailChange={admin.onNewEmailChange}
+            onNewPasswordChange={admin.onNewPasswordChange}
+            onNewOwnerNameChange={admin.onNewOwnerNameChange}
+            onNewAddressChange={admin.onNewAddressChange}
+            onCurrentAdminPasswordChange={admin.onCurrentAdminPasswordChange}
+            onNextAdminPasswordChange={admin.onNextAdminPasswordChange}
+            onUserPasswordDraftChange={admin.onUserPasswordDraftChange}
             onLoadUsers={admin.handleAdminLoad}
+            onCreateUser={admin.handleAdminCreate}
+            onChangeAdminPassword={admin.handleAdminPasswordChange}
+            onChangeUserPassword={admin.handleUserPasswordChange}
             onDeleteUser={admin.handleAdminDelete}
           />
         )}
-        {user && (
+        {user && !user.isAdmin && (
           <ProfileForm
             ownerName={profile.profileOwnerName}
             address={profile.profileAddress}
