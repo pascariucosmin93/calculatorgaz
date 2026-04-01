@@ -47,8 +47,6 @@ async function bootstrapAdminUser() {
         passwordHash
       }
     });
-
-    console.log(`Bootstrapped admin user ${ADMIN_EMAIL}`);
     return;
   }
 
@@ -60,8 +58,6 @@ async function bootstrapAdminUser() {
       ownerName: ADMIN_OWNER_NAME
     }
   });
-
-  console.log(`Reconciled admin user ${ADMIN_EMAIL}`);
 }
 
 export async function ensureAdminUser() {
