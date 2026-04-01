@@ -32,7 +32,6 @@ There is also a separate manual `promote` workflow:
 Contains:
 
 - the main Next.js application in [`gaz-nextjs`](/Users/cosmin.pascariu/calculatorgaz/gaz-nextjs)
-- the OCR service in [`ocr-service`](/Users/cosmin.pascariu/calculatorgaz/ocr-service)
 - GitHub Actions workflows in [`.github/workflows`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows)
 - Argo CD manifests in [`argocd`](/Users/cosmin.pascariu/calculatorgaz/argocd)
 
@@ -47,12 +46,10 @@ Argo CD should track `gaz-gitops`, not the application repository.
 
 ## Application Architecture
 
-The platform has two main runtime components:
+The platform has one main runtime component:
 
 - `calculatorgaz`
   the primary Next.js application that provides the UI, API routes, and PostgreSQL access through Prisma
-- `ocr-service`
-  a separate internal HTTP service used for OCR
 
 The Helm chart also generates several small support services from `values.yaml`:
 
@@ -78,7 +75,6 @@ At a logical level:
    - or to the main `calculatorgaz` application
 4. `calculatorgaz` talks to:
    - PostgreSQL for persistent data
-   - `ocr-service` for OCR processing
    - internal or external services for invoices, notifications, and sessions
 
 ## Kubernetes
@@ -93,7 +89,7 @@ The cluster setup includes:
 
 The Helm chart in `gaz-gitops` defines:
 
-- deployments for `calculatorgaz` and `ocr-service`
+- deployments for `calculatorgaz`
 - generated deployments and services for support microservices
 - Gateway and HTTPRoutes
 - network policies
@@ -103,7 +99,6 @@ Relevant files:
 
 - [`values.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/values.yaml)
 - [`templates/calculatorgaz/deployment.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/calculatorgaz/deployment.yaml)
-- [`templates/ocr-service/deployment.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/ocr-service/deployment.yaml)
 - [`templates/gateway/gateway.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/gateway/gateway.yaml)
 - [`templates/gateway/httproutes.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/gateway/httproutes.yaml)
 
@@ -143,7 +138,7 @@ On every push to `main`, the main workflow performs:
 2. dependency scanning
 3. Docker image builds
 4. smoke tests
-   it starts `postgres`, `ocr-service`, and `calculatorgaz`
+   it starts `postgres` and `calculatorgaz`
 5. image push to GHCR
 6. `gaz-gitops` update
 
@@ -179,7 +174,6 @@ This gives you:
 Images are published to GHCR:
 
 - `ghcr.io/pascariucosmin93/calculatorgaz`
-- `ghcr.io/pascariucosmin93/ocr-service`
 
 If you want to avoid `imagePullSecret` in the cluster, the simplest option is to keep these GHCR images public.
 
@@ -227,7 +221,6 @@ calculatorgaz/
 │   ├── lib/
 │   ├── prisma/
 │   └── tests/
-└── ocr-service/
 ```
 
 ```text
@@ -239,7 +232,6 @@ gaz-gitops/
         ├── calculatorgaz/
         ├── gateway/
         ├── microservices/
-        ├── ocr-service/
         ├── backup/
         └── network-policies.yaml
 ```

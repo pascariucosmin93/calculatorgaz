@@ -3,7 +3,6 @@
 Aplicație Next.js care calculează consumul și costul la gaz pe baza citirilor de pe contor și a tarifelor din contract.
 
 ## Caracteristici
-- încărcare a două poze cu contorul (luna trecută și luna curentă) și extragerea automată a cifrelor cu OCR (Tesseract)
 - calcul automat m³ → kWh → MWh folosind PCS și tarifele din factură (gaz, transport, distribuție, plafonări OUG, TVA configurabil)
 - formă manuală pentru reglaje fine: PCS, prețuri pe MWh, compensații plafonare, abonament și TVA
 - salvarea ultimei citiri și a tarifelor în `localStorage` pentru următoarea sesiune
@@ -68,8 +67,7 @@ Aplicație Next.js care calculează consumul și costul la gaz pe baza citirilor
    4. Stack-ul Docker Compose/Swarm marchează containerul `app` ca sănătos doar după ce `/api/health` răspunde, iar serviciul `nginx` este monitorizat printr-un healthcheck HTTP.
 
 ## Structură
-- `app/page.tsx` – interfața principală, logica OCR și calculatorul de cost
-- `app/api/ocr/route.ts` – endpoint care rulează Tesseract pe imaginile trimise
+- `app/page.tsx` – interfața principală și calculatorul de cost
 - `app/api/health/route.ts` – verifică conectivitatea către baza de date pentru healthchecks
 - `app/layout.tsx` și `app/globals.css` – layout-ul Next.js și stilurile globale
 - `Dockerfile` / `.dockerignore` – rulare containerizată

@@ -176,7 +176,7 @@ kubectl -n gaz logs deploy/invoice-service
 
 ## 11. Known Gaps / Next Improvements
 
-- Replace heuristic PDF parsing with robust extraction pipeline (OCR + template matching).
+- Replace heuristic PDF parsing with a more robust extraction pipeline and template matching.
 - Add audit trail for admin actions.
 - Add integration tests for invoice upload and tariff autofill.
 - Add network policies between services for stricter east-west traffic control.

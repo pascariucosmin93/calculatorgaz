@@ -26,8 +26,7 @@ const DEFAULT_RATE_LIMIT_RULES: Record<string, RateLimitRule> = {
   "POST /api/auth/signup": { maxRequests: 3, windowMs: 15 * 60_000 },
   "POST /api/auth/reset-password": { maxRequests: 3, windowMs: 60 * 60_000 },
   "POST /api/auth/reset-password/confirm": { maxRequests: 3, windowMs: 60 * 60_000 },
-  "POST /api/admin/session": { maxRequests: 3, windowMs: 15 * 60_000 },
-  "POST /api/ocr": { maxRequests: 10, windowMs: 15 * 60_000 }
+  "POST /api/admin/session": { maxRequests: 3, windowMs: 15 * 60_000 }
 };
 
 type RateLimitState = {

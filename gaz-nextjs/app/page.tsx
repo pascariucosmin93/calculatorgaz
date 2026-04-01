@@ -19,7 +19,7 @@ import { CookieConsent } from "./components/CookieConsent";
 import { styles } from "./styles";
 import { HistoryEntry, HistoryStatus, ThemeMode } from "@/lib/types";
 
-import { useAuth, csrfHeaders } from "./hooks/useAuth";
+import { useAuth } from "./hooks/useAuth";
 import { useAdmin } from "./hooks/useAdmin";
 import { useProfile } from "./hooks/useProfile";
 import { useSettings } from "./hooks/useSettings";
@@ -253,8 +253,6 @@ export default function Home() {
                 isSaving={calculator.isSaving}
                 user={user}
                 onReadingChange={handleCurrentReadingChange}
-                onPreviousReadingChange={settings.onPreviousReadingChange}
-                csrfHeaders={csrfHeaders}
               />
               <SettingsForm
                 previousReading={settings.previousReading}
