@@ -9,7 +9,11 @@ let csrfToken: string | null = null;
 async function ensureCsrfToken(): Promise<string> {
   if (csrfToken) return csrfToken;
   try {
-    const res = await fetch("/api/auth/csrf");
+    const res = await fetch("/api/auth/csrf", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store"
+    });
     if (res.ok) {
       const data = await res.json();
       csrfToken = data.csrfToken;
