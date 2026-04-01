@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AuthUser } from "@/lib/types";
 import { AdminUser } from "../components/AdminUsersPanel";
-import { csrfHeaders } from "./useAuth";
+import { getCsrfHeaders } from "./useAuth";
 
 export function useAdmin(user: AuthUser | null) {
   const [adminAuthPassword, setAdminAuthPassword] = useState("");
@@ -57,7 +57,7 @@ export function useAdmin(user: AuthUser | null) {
 
         const authResponse = await fetch("/api/admin/session", {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...csrfHeaders() },
+          headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
           body: JSON.stringify({ password: adminAuthPassword })
         });
 
@@ -81,7 +81,7 @@ export function useAdmin(user: AuthUser | null) {
 
       const response = await fetch("/api/admin/users", {
         method: "POST",
-        headers: { ...csrfHeaders() }
+        headers: { ...(await getCsrfHeaders()) }
       });
 
       let data: Record<string, unknown>[] | null = null;
@@ -130,7 +130,7 @@ export function useAdmin(user: AuthUser | null) {
       try {
         const response = await fetch("/api/admin/users", {
           method: "DELETE",
-          headers: { "Content-Type": "application/json", ...csrfHeaders() },
+          headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
           body: JSON.stringify({ userId })
         });
 
@@ -176,7 +176,7 @@ export function useAdmin(user: AuthUser | null) {
     try {
       const response = await fetch("/api/admin/users", {
         method: "PUT",
-        headers: { "Content-Type": "application/json", ...csrfHeaders() },
+        headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
         body: JSON.stringify({
           username: newUsername,
           email: newEmail,
@@ -227,7 +227,7 @@ export function useAdmin(user: AuthUser | null) {
     try {
       const response = await fetch("/api/admin/password", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", ...csrfHeaders() },
+        headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
         body: JSON.stringify({
           currentPassword: currentAdminPassword,
           newPassword: nextAdminPassword
@@ -282,7 +282,7 @@ export function useAdmin(user: AuthUser | null) {
       try {
         const response = await fetch("/api/admin/users", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json", ...csrfHeaders() },
+          headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
           body: JSON.stringify({ userId, password })
         });
 

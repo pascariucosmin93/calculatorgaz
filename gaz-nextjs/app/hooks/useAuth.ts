@@ -21,6 +21,11 @@ async function ensureCsrfToken(): Promise<string> {
   return "";
 }
 
+export async function getCsrfHeaders(): Promise<Record<string, string>> {
+  const token = await ensureCsrfToken();
+  return token ? { "x-csrf-token": token } : {};
+}
+
 export function csrfHeaders(): Record<string, string> {
   return csrfToken ? { "x-csrf-token": csrfToken } : {};
 }
