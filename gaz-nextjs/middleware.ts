@@ -139,15 +139,7 @@ function validateCsrf(request: NextRequest): boolean {
   const headerToken = request.headers.get("x-csrf-token") ?? "";
   if (!cookieToken || !headerToken) return false;
   if (cookieToken.length < 32 || headerToken.length < 32) return false;
-  try {
-    const a = Buffer.from(cookieToken, "utf8");
-    const b = Buffer.from(headerToken, "utf8");
-    if (a.length !== b.length) return false;
-    const crypto = require("crypto");
-    return crypto.timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
+  return cookieToken === headerToken;
 }
 
 // ---------------------------------------------------------------------------
