@@ -71,6 +71,70 @@ jobs:
           MINOR="${RELEASE_VERSION%.*}"
 
           docker pull "$CALC_IMAGE:$SOURCE_TAG"
+          docker tag "$CALC_IMAGE:$SOURCE_TAG" "$CALC_IMAGE:promote-smoke"
+          docker network create gaz-promote-net
+
+          cleanup() {
+            local exit_code=$?
+            docker rm -f gaz-promote-db gaz-promote-calc gaz-promote-auth gaz-promote-session >/dev/null 2>&1 || true
+            docker network rm gaz-promote-net >/dev/null 2>&1 || true
+            exit "$exit_code"
+          }
+          trap cleanup EXIT
+
+          docker run -d --name gaz-promote-db --network gaz-promote-net \
+            -e POSTGRES_USER=gaz \
+            -e POSTGRES_PASSWORD=gaz \
+            -e POSTGRES_DB=gaz \
+            postgres:16-alpine
+
+          for _ in $(seq 1 30); do
+            if docker exec gaz-promote-db pg_isready -U gaz -d gaz >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+
+          docker run -d --name gaz-promote-session --network gaz-promote-net \
+            -v "$PWD/gaz-nextjs/scripts:/scripts:ro" \
+            -e PORT=8088 \
+            -e JWT_SECRET=test-session-jwt-secret \
+            node:20-alpine \
+            node /scripts/session-service.mjs
+
+          docker run -d --name gaz-promote-auth --network gaz-promote-net \
+            -v "$PWD/gaz-nextjs/scripts:/scripts:ro" \
+            -e PORT=8083 \
+            -e APP_BASE_URL=http://gaz-promote-calc:3000 \
+            -e INTERNAL_API_KEY=test-internal-api-key \
+            node:20-alpine \
+            node /scripts/auth-service.mjs
+
+          docker run -d --name gaz-promote-calc --network gaz-promote-net \
+            -p 3000:3000 \
+            -e DATABASE_URL=postgresql://gaz:gaz@gaz-promote-db:5432/gaz \
+            -e ADMIN_EMAIL=admin@gmail.com \
+            -e ADMIN_PASSWORD=admin \
+            -e ADMIN_SESSION_SECRET=test-admin-session-secret \
+            -e AUTH_SERVICE_URL=http://gaz-promote-auth:8083 \
+            -e SESSION_SERVICE_URL=http://gaz-promote-session:8088 \
+            -e INTERNAL_API_KEY=test-internal-api-key \
+            "$CALC_IMAGE:promote-smoke"
+
+          for _ in $(seq 1 45); do
+            if curl --silent --show-error --fail --retry-all-errors http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+
+          mkdir -p smoke-artifacts
+          SMOKE_BASE_URL=http://127.0.0.1:3000 \
+          SMOKE_ADMIN_EMAIL=admin@gmail.com \
+          SMOKE_ADMIN_PASSWORD=admin \
+          SMOKE_REPORT_PATH=smoke-artifacts/promote-smoke-report.json \
+          node gaz-nextjs/scripts/smoke-api.mjs
+
           docker tag "$CALC_IMAGE:$SOURCE_TAG" "$CALC_IMAGE:$RELEASE_VERSION"
           docker tag "$CALC_IMAGE:$SOURCE_TAG" "$CALC_IMAGE:$MAJOR"
           docker tag "$CALC_IMAGE:$SOURCE_TAG" "$CALC_IMAGE:$MINOR"
@@ -80,6 +144,14 @@ jobs:
           docker push "$CALC_IMAGE:$MAJOR"
           docker push "$CALC_IMAGE:$MINOR"
           docker push "$CALC_IMAGE:latest"
+
+      - name: Upload promote smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promote-smoke-report
+          path: smoke-artifacts/promote-smoke-report.json
+          retention-days: 30
 
       - name: Update gaz-gitops to promoted version
         if: ${{ inputs.update_gitops }}

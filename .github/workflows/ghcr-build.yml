@@ -22,7 +22,7 @@ env:
   GITOPS_REPO: https://github.com/pascariucosmin93/gaz-gitops.git
 
 jobs:
-  unit-tests:
+  pre-build-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -35,11 +35,11 @@ jobs:
           cache: "npm"
           cache-dependency-path: "gaz-nextjs/package-lock.json"
 
-      - name: Run unit tests
+      - name: Run lint and unit tests
         working-directory: gaz-nextjs
         run: |
           npm ci --ignore-scripts
-          npm test
+          npm run test:all
 
   dependency-scan:
     runs-on: ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
 
   build-test-push:
     needs:
-      - unit-tests
+      - pre-build-tests
       - dependency-scan
     runs-on: ubuntu-latest
 
@@ -108,7 +108,7 @@ jobs:
             -t ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.dev_version }} \
             ./gaz-nextjs
 
-      - name: Smoke test calculatorgaz
+      - name: Smoke test built image
         env:
           CALC_IMAGE: ${{ steps.img.outputs.calc }}:${{ steps.vars.outputs.dev_version }}
         run: |
@@ -129,6 +129,10 @@ jobs:
           print_logs() {
             echo "=== gaz-smoke-calc logs ==="
             docker logs gaz-smoke-calc || true
+            echo "=== gaz-smoke-auth logs ==="
+            docker logs gaz-smoke-auth || true
+            echo "=== gaz-smoke-session logs ==="
+            docker logs gaz-smoke-session || true
             echo "=== gaz-smoke-db logs ==="
             docker logs gaz-smoke-db || true
           }
@@ -138,7 +142,7 @@ jobs:
             if [ "$exit_code" -ne 0 ]; then
               print_logs
             fi
-            docker rm -f gaz-smoke-db gaz-smoke-calc >/dev/null 2>&1 || true
+            docker rm -f gaz-smoke-db gaz-smoke-calc gaz-smoke-auth gaz-smoke-session >/dev/null 2>&1 || true
             docker network rm gaz-smoke-net >/dev/null 2>&1 || true
             exit "$exit_code"
           }
@@ -159,16 +163,48 @@ jobs:
             sleep 2
           done
 
+          docker run -d --name gaz-smoke-session --network gaz-smoke-net \
+            -v "$PWD/gaz-nextjs/scripts:/scripts:ro" \
+            -e PORT=8088 \
+            -e JWT_SECRET=test-session-jwt-secret \
+            node:20-alpine \
+            node /scripts/session-service.mjs
+
+          docker run -d --name gaz-smoke-auth --network gaz-smoke-net \
+            -v "$PWD/gaz-nextjs/scripts:/scripts:ro" \
+            -e PORT=8083 \
+            -e APP_BASE_URL=http://gaz-smoke-calc:3000 \
+            -e INTERNAL_API_KEY=test-internal-api-key \
+            node:20-alpine \
+            node /scripts/auth-service.mjs
+
           docker run -d --name gaz-smoke-calc --network gaz-smoke-net \
             -p 3000:3000 \
             -e DATABASE_URL=postgresql://gaz:gaz@gaz-smoke-db:5432/gaz \
             -e ADMIN_EMAIL=admin@gmail.com \
-            -e ADMIN_PASSWORD=test-admin-password \
+            -e ADMIN_PASSWORD=admin \
             -e ADMIN_SESSION_SECRET=test-admin-session-secret \
-            -e SESSION_SERVICE_URL=http://session-service:8088 \
+            -e AUTH_SERVICE_URL=http://gaz-smoke-auth:8083 \
+            -e SESSION_SERVICE_URL=http://gaz-smoke-session:8088 \
+            -e INTERNAL_API_KEY=test-internal-api-key \
             "$CALC_IMAGE"
 
           wait_for_http http://127.0.0.1:3000/api/health 45
+
+          mkdir -p smoke-artifacts
+          SMOKE_BASE_URL=http://127.0.0.1:3000 \
+          SMOKE_ADMIN_EMAIL=admin@gmail.com \
+          SMOKE_ADMIN_PASSWORD=admin \
+          SMOKE_REPORT_PATH=smoke-artifacts/api-smoke-report.json \
+          node gaz-nextjs/scripts/smoke-api.mjs
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-smoke-report
+          path: smoke-artifacts/api-smoke-report.json
+          retention-days: 30
 
       - name: Push calculatorgaz tags
         run: |
