@@ -46,10 +46,31 @@ setInterval(() => {
 
 function getClientIp(request: NextRequest): string {
   return (
+    request.headers.get("cf-connecting-ip") ||
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "unknown"
   );
+}
+
+const SKIP_LOG_PATHS = ["/_next/", "/favicon.ico", "/health"];
+
+function logRequest(request: NextRequest): void {
+  const pathname = request.nextUrl.pathname;
+  if (SKIP_LOG_PATHS.some(p => pathname.startsWith(p))) return;
+
+  const ua = request.headers.get("user-agent") ?? "";
+  if (ua.includes("kube-probe") || ua.includes("Go-http-client")) return;
+
+  console.log(JSON.stringify({
+    time: new Date().toISOString(),
+    ip: getClientIp(request),
+    country: request.headers.get("cf-ipcountry") ?? "",
+    ray: request.headers.get("cf-ray") ?? "",
+    method: request.method,
+    path: pathname,
+    ua,
+  }));
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -146,6 +167,7 @@ function validateCsrf(request: NextRequest): boolean {
 // Middleware
 // ---------------------------------------------------------------------------
 export function middleware(request: NextRequest) {
+  logRequest(request);
   const pathname = request.nextUrl.pathname;
   const ruleKey = `${request.method} ${pathname}`;
   const rateLimitRule = resolveRule(request.method, pathname);
@@ -212,5 +234,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*", "/", "/resetare"]
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ]
 };
