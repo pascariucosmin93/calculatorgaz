@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const DEFAULT_RESET_BASE_URL = "https://reset.gaz.cosmin-lab.cloud/";
+const DEFAULT_BLOCKLIST_URL = "http://ddos-agent.ddos-protection.svc.cluster.local:8080/blocklist";
+const DEFAULT_BLOCKLIST_CACHE_MS = 15_000;
+
+type BlocklistApiResponse = {
+  items?: string[];
+};
 
 function getResetHost() {
   const rawBase = process.env.RESET_PASSWORD_BASE_URL ?? DEFAULT_RESET_BASE_URL;
@@ -12,6 +18,11 @@ function getResetHost() {
 }
 
 const RESET_HOST = getResetHost();
+const BLOCKLIST_URL = process.env.DDOS_BLOCKLIST_URL ?? DEFAULT_BLOCKLIST_URL;
+const BLOCKLIST_CACHE_MS = parsePositiveInt(
+  process.env.DDOS_BLOCKLIST_CACHE_MS,
+  DEFAULT_BLOCKLIST_CACHE_MS
+);
 
 // ---------------------------------------------------------------------------
 // Rate limiting (in-memory, per IP + route + method)
@@ -35,6 +46,8 @@ type RateLimitState = {
 };
 
 const rateLimitMap = new Map<string, RateLimitState>();
+const blockedIpCache = new Set<string>();
+let blockedIpCacheExpiresAt = 0;
 
 // Cleanup stale entries every 5 minutes
 setInterval(() => {
@@ -46,7 +59,7 @@ setInterval(() => {
 
 function getClientIp(request: NextRequest): string {
   return (
-    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("cf-connecting-ip")?.trim() ||
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "unknown"
@@ -76,6 +89,49 @@ function logRequest(request: NextRequest): void {
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+async function refreshBlockedIpCacheIfNeeded(force = false): Promise<void> {
+  const now = Date.now();
+  if (!force && now < blockedIpCacheExpiresAt) {
+    return;
+  }
+
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), 1_500);
+
+  try {
+    const response = await fetch(BLOCKLIST_URL, {
+      cache: "no-store",
+      signal: abortController.signal
+    });
+
+    if (!response.ok) {
+      blockedIpCacheExpiresAt = now + Math.min(BLOCKLIST_CACHE_MS, 5_000);
+      return;
+    }
+
+    const payload: BlocklistApiResponse = await response.json();
+    blockedIpCache.clear();
+    for (const ip of payload.items ?? []) {
+      if (typeof ip === "string" && ip.trim()) {
+        blockedIpCache.add(ip.trim());
+      }
+    }
+    blockedIpCacheExpiresAt = now + BLOCKLIST_CACHE_MS;
+  } catch {
+    blockedIpCacheExpiresAt = now + Math.min(BLOCKLIST_CACHE_MS, 5_000);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function isBlockedIp(ip: string): Promise<boolean> {
+  if (!ip || ip === "unknown") {
+    return false;
+  }
+  await refreshBlockedIpCacheIfNeeded();
+  return blockedIpCache.has(ip);
 }
 
 function resolveRule(method: string, pathname: string): RateLimitRule | null {
@@ -166,9 +222,19 @@ function validateCsrf(request: NextRequest): boolean {
 // ---------------------------------------------------------------------------
 // Middleware
 // ---------------------------------------------------------------------------
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   logRequest(request);
+
   const pathname = request.nextUrl.pathname;
+  const clientIp = getClientIp(request);
+
+  if (await isBlockedIp(clientIp)) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   const ruleKey = `${request.method} ${pathname}`;
   const rateLimitRule = resolveRule(request.method, pathname);
   const rateLimitResult =

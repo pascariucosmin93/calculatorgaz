@@ -71,3 +71,11 @@ Aplicație Next.js care calculează consumul și costul la gaz pe baza citirilor
 - `app/api/health/route.ts` – verifică conectivitatea către baza de date pentru healthchecks
 - `app/layout.tsx` și `app/globals.css` – layout-ul Next.js și stilurile globale
 - `Dockerfile` / `.dockerignore` – rulare containerizată
+
+## DDoS Blocklist Integration
+
+Middleware can deny requests based on `CF-Connecting-IP` from the central `ddos-agent` blocklist API.
+
+Runtime env vars:
+- `DDOS_BLOCKLIST_URL` (default: `http://ddos-agent.ddos-protection.svc.cluster.local:8080/blocklist`)
+- `DDOS_BLOCKLIST_CACHE_MS` (default: `15000`)
