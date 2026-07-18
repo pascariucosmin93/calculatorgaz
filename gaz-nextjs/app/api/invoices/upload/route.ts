@@ -4,6 +4,7 @@ import { isErrorResponse, verifySession } from "@/lib/auth";
 const INVOICE_SERVICE_URL =
   process.env.INVOICE_SERVICE_URL?.trim() ??
   "http://invoice-service:8087";
+const MAX_INVOICE_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const session = await verifySession(request);
@@ -14,6 +15,13 @@ export async function POST(request: NextRequest) {
     const formData = new FormData();
     const city = incomingFormData.get("city");
     const file = incomingFormData.get("file");
+
+    if (file instanceof File && file.size > MAX_INVOICE_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: "Fișierul PDF nu poate depăși 20 MB." },
+        { status: 413 }
+      );
+    }
 
     if (city) {
       formData.set("city", String(city));

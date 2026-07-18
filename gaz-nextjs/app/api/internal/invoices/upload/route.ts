@@ -11,6 +11,7 @@ const S3_REGION = process.env.SEAWEED_S3_REGION?.trim() || "us-east-1";
 const S3_BUCKET = process.env.SEAWEED_S3_BUCKET?.trim() || "facturi";
 const S3_ACCESS_KEY = process.env.SEAWEED_S3_ACCESS_KEY?.trim() || "";
 const S3_SECRET_KEY = process.env.SEAWEED_S3_SECRET_KEY?.trim() || "";
+const MAX_INVOICE_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
 type TariffProfile = {
   city: string;
@@ -130,6 +131,12 @@ export async function POST(request: Request) {
   }
   if (file.type !== "application/pdf") {
     return NextResponse.json({ error: "Fișierul trebuie să fie PDF." }, { status: 422 });
+  }
+  if (file.size > MAX_INVOICE_FILE_SIZE_BYTES) {
+    return NextResponse.json(
+      { error: "Fișierul PDF nu poate depăși 20 MB." },
+      { status: 413 }
+    );
   }
 
   const arrayBuffer = await file.arrayBuffer();
