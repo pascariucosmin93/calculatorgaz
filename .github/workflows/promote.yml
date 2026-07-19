@@ -34,7 +34,7 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Validate release version
         env:
@@ -147,7 +147,7 @@ jobs:
 
       - name: Upload promote smoke report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: promote-smoke-report
           path: smoke-artifacts/promote-smoke-report.json
