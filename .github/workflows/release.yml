@@ -120,7 +120,7 @@ jobs:
 
       - name: Update gaz-gitops
         env:
-          GITOPS_TOKEN: ${{ secrets.GAZ_GITOPS_TOKEN }}
+          GITOPS_TOKEN: ${{ secrets.GITOPS_PUSH_TOKEN }}
           SERVER_URL: ${{ github.server_url }}
           GITOPS_REPO: ${{ github.repository_owner }}/gaz-gitops
         run: |
