@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AuthMode, AuthUser } from "@/lib/types";
-import { getCookieConsent } from "../components/CookieConsent";
+import { requestJson } from "@/lib/api-client";
 
 let csrfToken: string | null = null;
 
@@ -36,17 +36,13 @@ export function csrfHeaders(): Record<string, string> {
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authUsername, setAuthUsername] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetLink, setResetLink] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetError, setResetError] = useState("");
-  const [resetMessage, setResetMessage] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -62,12 +58,19 @@ export function useAuth() {
             email: data.email ?? null,
             ownerName: data.ownerName ?? null,
             address: data.address ?? null,
+            meterSerial: data.meterSerial ?? null,
             isAdmin: data.isAdmin === true,
             createdAt: data.createdAt ?? new Date().toISOString()
           });
+        } else {
+          setUser(null);
         }
       })
-      .catch((err) => console.warn("Auth status check failed:", err));
+      .catch((err) => {
+        console.warn("Auth status check failed:", err);
+        setUser(null);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const handleAuthSubmit = useCallback(
@@ -87,36 +90,20 @@ export function useAuth() {
       const endpoint = authMode === "signup" ? "signup" : "login";
 
       try {
-        const consent = getCookieConsent();
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (consent === "accepted") {
-          headers["x-cookie-consent"] = "accepted";
-        }
-
-        const response = await fetch(`/api/auth/${endpoint}`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            username: authUsername,
-            password: authPassword,
-            ...(authMode === "signup" ? { email: authEmail } : {}),
-            ...(authMode === "login" ? { identifier: authUsername } : {})
-          })
-        });
-
-        let data: Record<string, unknown> | null = null;
-        try {
-          const text = await response.text();
-          if (text) data = JSON.parse(text);
-        } catch {
-          // ignore parse errors
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            (data?.error as string) || `Eroare de autentificare (cod ${response.status}).`
-          );
-        }
+        const data = await requestJson<Record<string, unknown> | null>(
+          `/api/auth/${endpoint}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: authUsername,
+              password: authPassword,
+              ...(authMode === "signup" ? { email: authEmail } : {}),
+              ...(authMode === "login" ? { identifier: authUsername } : {})
+            })
+          },
+          "Eroare de autentificare."
+        );
         if (!data) {
           throw new Error("Răspuns invalid de la server (lipsă JSON). Încearcă din nou.");
         }
@@ -127,6 +114,7 @@ export function useAuth() {
           email: (data.email as string) ?? null,
           ownerName: (data.ownerName as string) ?? null,
           address: (data.address as string) ?? null,
+          meterSerial: (data.meterSerial as string) ?? null,
           isAdmin: data.isAdmin === true,
           createdAt: data.createdAt as string
         });
@@ -150,84 +138,23 @@ export function useAuth() {
   const handleAuthModeChange = useCallback((mode: AuthMode) => {
     setAuthMode(mode);
     setAuthError("");
-    setResetError("");
-    setResetMessage("");
-    setResetLink("");
   }, []);
-
-  const handleResetEmailChange = useCallback((value: string) => {
-    setResetEmail(value);
-    setResetError("");
-    setResetMessage("");
-  }, []);
-
-  const handleResetPasswordSubmit = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const email = resetEmail.trim();
-      if (!email) {
-        setResetError("Introdu adresa de email.");
-        setResetMessage("");
-        return;
-      }
-
-      setResetLoading(true);
-      setResetError("");
-      setResetMessage("");
-      setResetLink("");
-
-      try {
-        const response = await fetch("/api/auth/reset-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email })
-        });
-
-        let data: Record<string, string> | null = null;
-        try {
-          data = await response.json();
-        } catch {
-          data = null;
-        }
-
-        if (!response.ok) {
-          setResetError(data?.error ?? "Nu am putut trimite link-ul de resetare.");
-          return;
-        }
-
-        setResetMessage(data?.message ?? "Ți-am trimis instrucțiunile pentru resetarea parolei.");
-        setResetLink(data?.resetUrl ?? data?.resetPage ?? "");
-        setResetEmail("");
-      } catch {
-        setResetError("Eroare la trimiterea cererii de resetare.");
-      } finally {
-        setResetLoading(false);
-      }
-    },
-    [resetEmail]
-  );
 
   return {
     user,
     setUser,
+    isLoading,
     authMode,
     authUsername,
     authEmail,
     authPassword,
     authLoading,
     authError,
-    resetEmail,
-    resetLink,
-    resetLoading,
-    resetError,
-    resetMessage,
     handleAuthSubmit,
     handleLogout,
     handleAuthModeChange,
     onUsernameChange: useCallback((v: string) => setAuthUsername(v), []),
     onEmailChange: useCallback((v: string) => setAuthEmail(v), []),
-    onPasswordChange: useCallback((v: string) => setAuthPassword(v), []),
-    handleResetEmailChange,
-    handleResetPasswordSubmit
+    onPasswordChange: useCallback((v: string) => setAuthPassword(v), [])
   };
 }

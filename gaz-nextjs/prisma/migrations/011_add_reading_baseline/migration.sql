@@ -1,0 +1,2 @@
+ALTER TABLE "Reading"
+ADD COLUMN "isBaseline" BOOLEAN NOT NULL DEFAULT false;

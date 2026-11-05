@@ -1,0 +1,4 @@
+import { HistoryEntry } from "@/lib/types";
+import { formatCurrency } from "@/lib/format";
+import { StatusBadge } from "./StatusBadge";
+export function InvoiceCard({ entry, userId, locationId }: { entry: HistoryEntry; userId: string; locationId?: string }) { return <article className="invoice-card"><div className="invoice-date"><strong>{new Date(entry.readingAt ?? entry.createdAt).toLocaleDateString("ro-RO")}</strong><span>{entry.consumptionM3.toFixed(1)} m³ · {entry.consumptionKwh.toFixed(0)} kWh</span></div><StatusBadge tone="success">Calculată</StatusBadge><strong className="invoice-amount">{formatCurrency(entry.total)}</strong><a className="download-link" href={`/api/reports/export/pdf?userId=${encodeURIComponent(userId)}${locationId ? `&locationId=${encodeURIComponent(locationId)}` : ""}`} aria-label="Descarcă factura">↓</a></article>; }

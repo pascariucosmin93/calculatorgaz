@@ -17,10 +17,11 @@ export async function GET(request: NextRequest) {
   }
 
   const targetUserId = userId || session.id;
+  const locationId = url.searchParams.get("locationId") ?? "";
 
   try {
     const response = await fetch(
-      `${READING_SERVICE_URL.replace(/\/+$/, "")}/readings?userId=${encodeURIComponent(targetUserId)}`,
+      `${READING_SERVICE_URL.replace(/\/+$/, "")}/readings?userId=${encodeURIComponent(targetUserId)}${locationId ? `&locationId=${encodeURIComponent(locationId)}` : ""}`,
       { cache: "no-store", signal: AbortSignal.timeout(10_000) }
     );
     const text = await response.text();
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(10_000)
     });
     const text = await response.text();
+
     return new NextResponse(text, {
       status: response.status,
       headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" }
@@ -61,5 +63,37 @@ export async function POST(request: NextRequest) {
       { error: "Serviciul de citiri este momentan indisponibil." },
       { status: 502 }
     );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const session = await verifySession(request);
+  if (isErrorResponse(session)) return session;
+  try {
+    const body = await request.json();
+    body.userId = session.id;
+    const response = await fetch(`${READING_SERVICE_URL.replace(/\/+$/, "")}/readings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(10_000)
+    });
+    return new NextResponse(await response.text(), { status: response.status, headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" } });
+  } catch {
+    return NextResponse.json({ error: "Serviciul de citiri este momentan indisponibil." }, { status: 502 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const session = await verifySession(request);
+  if (isErrorResponse(session)) return session;
+  try {
+    const body = await request.json();
+    body.userId = session.id;
+    const response = await fetch(`${READING_SERVICE_URL.replace(/\/+$/, "")}/readings`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(10_000)
+    });
+    return new NextResponse(await response.text(), { status: response.status, headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" } });
+  } catch {
+    return NextResponse.json({ error: "Serviciul de citiri este momentan indisponibil." }, { status: 502 });
   }
 }

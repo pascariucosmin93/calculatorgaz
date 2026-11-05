@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import prisma from "@/lib/prisma";
+
 const SESSION_SERVICE_URL =
   process.env.SESSION_SERVICE_URL?.trim() ??
   "http://session-service:8088";
@@ -48,6 +50,22 @@ export async function verifySession(
     }
 
     const payload = await res.json();
+
+    // tokenVersion e semnat în JWT la login și crescut la logout/schimbare de
+    // parolă — dacă nu mai coincide cu valoarea curentă din DB, sesiunea a
+    // fost revocată explicit, chiar dacă tokenul în sine e încă valid 24h.
+    const user = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { tokenVersion: true }
+    });
+
+    if (!user || user.tokenVersion !== payload.tokenVersion) {
+      return NextResponse.json(
+        { error: "Sesiune expirată." },
+        { status: 401 }
+      );
+    }
+
     return {
       id: payload.id,
       username: payload.username,

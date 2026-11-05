@@ -1,0 +1,28 @@
+<mxfile host="app.diagrams.net" modified="2026-09-29T13:15:00.000Z" agent="CalculatorGaz" version="26.0.14">
+  <diagram id="calculatorgaz-architecture" name="Architecture">
+    <mxGraphModel dx="1440" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="user" value="Utilizator&lt;br&gt;Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1"><mxGeometry x="40" y="300" width="120" height="60" as="geometry"/></mxCell>
+        <mxCell id="app" value="CalculatorGaz&lt;br&gt;Next.js" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="240" y="290" width="150" height="80" as="geometry"/></mxCell>
+        <mxCell id="swarm" value="Kubernetes · namespace gaz" style="swimlane;horizontal=0;startSize=28;rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="90" width="390" height="510" as="geometry"/></mxCell>
+        <mxCell id="auth" value="auth-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="swarm"><mxGeometry x="30" y="50" width="140" height="45" as="geometry"/></mxCell>
+        <mxCell id="session" value="session-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="swarm"><mxGeometry x="215" y="50" width="140" height="45" as="geometry"/></mxCell>
+        <mxCell id="reading" value="reading-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="swarm"><mxGeometry x="30" y="125" width="140" height="45" as="geometry"/></mxCell>
+        <mxCell id="billing" value="billing-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="swarm"><mxGeometry x="215" y="125" width="140" height="45" as="geometry"/></mxCell>
+        <mxCell id="reporting" value="reporting-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="swarm"><mxGeometry x="30" y="200" width="140" height="45" as="geometry"/></mxCell>
+        <mxCell id="notification" value="notification-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="swarm"><mxGeometry x="215" y="200" width="140" height="45" as="geometry"/></mxCell>
+        <mxCell id="invoice" value="invoice-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="swarm"><mxGeometry x="30" y="275" width="140" height="45" as="geometry"/></mxCell>
+        <mxCell id="metrics" value="admin-metrics-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="swarm"><mxGeometry x="30" y="350" width="140" height="45" as="geometry"/></mxCell>
+        <mxCell id="db" value="PostgreSQL extern&lt;br&gt;Prisma" style="shape=cylinder;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="swarm"><mxGeometry x="215" y="350" width="140" height="70" as="geometry"/></mxCell>
+        <mxCell id="r2" value="Cloudflare R2&lt;br&gt;PDF facturi" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="970" y="245" width="150" height="65" as="geometry"/></mxCell>
+        <mxCell id="otel" value="OpenTelemetry" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="970" y="445" width="150" height="55" as="geometry"/></mxCell>
+        <mxCell id="e1" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="user" target="app"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" value="servicii interne" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="app" target="reading"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" value="stocare" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="invoice" target="r2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="telemetrie" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="metrics" target="otel"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

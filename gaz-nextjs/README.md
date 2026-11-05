@@ -59,12 +59,10 @@ Aplicație Next.js care calculează consumul și costul la gaz pe baza citirilor
    docker compose up --build
    ```
    Contul implicit definit în `docker-compose.yml` este `gaz:gazpass` pentru baza `gaz`. Modifică variabilele dacă este necesar.
-   Pentru link-ul de resetare parolă se folosește `RESET_PASSWORD_BASE_URL` (implicit configurat la
-   `https://reset.gaz.cosmin-lab.cloud/`); poți suprascrie această variabilă pentru alte domenii.
-   Dacă vrei să primești link-ul pe Discord, setează `DISCORD_RESET_WEBHOOK_URL` cu adresa webhook-ului tău.
+   Parola se schimbă din aplicație de către utilizatorul autentificat, prin confirmarea parolei curente.
    2. Accesează aplicația prin Nginx: `http://localhost:8080/` (sau IP-ul hostului pe portul 8080).
    3. Datele Postgres sunt păstrate într-un volum denumit `gaz-db-data`.
-   4. Stack-ul Docker Compose/Swarm marchează containerul `app` ca sănătos doar după ce `/api/health` răspunde, iar serviciul `nginx` este monitorizat printr-un healthcheck HTTP.
+   4. Compose marchează containerul `app` ca sănătos doar după ce `/api/health` răspunde, iar serviciul `nginx` este monitorizat printr-un healthcheck HTTP.
 
 ## Structură
 - `app/page.tsx` – interfața principală și calculatorul de cost

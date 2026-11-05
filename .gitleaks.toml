@@ -1,0 +1,18 @@
+title = "CalculatorGaz secret scanning rules"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "hardcoded-deployment-secret"
+description = "Deployment secrets must be supplied through Kubernetes Secrets, never inline."
+regex = '''(?i)(POSTGRES_PASSWORD|ADMIN_PASSWORD|ADMIN_SESSION_SECRET|INTERNAL_API_KEY|JWT_SECRET|DISCORD_RESET_WEBHOOK_URL)[ \t]*:[ \t]*["']?[A-Za-z0-9][^ \t\r\n"']{7,}'''
+secretGroup = 0
+entropy = 0.0
+
+[[allowlists]]
+description = "Variable names and documentation examples are safe; only concrete assigned values are scanned."
+paths = [
+  '''(^|/)\.gitleaks\.toml$''',
+  '''(^|/)SECURITY_SCANNING\.md$'''
+]

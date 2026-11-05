@@ -1,94 +1,60 @@
-import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 
-type ResetPayload = {
-  email?: string;
+import prisma from "@/lib/prisma";
+import { validatePasswordStrength } from "@/lib/validation";
+
+type Payload = {
+  token?: string;
+  newPassword?: string;
 };
 
-const hashResetToken = (token: string) =>
-  crypto.createHash("sha256").update(token).digest("hex");
-
 export async function POST(request: Request) {
-  const DEFAULT_RESET_BASE_URL = "https://reset.gaz.cosmin-lab.cloud/";
-
   try {
-    let payload: ResetPayload | null = null;
+    let payload: Payload;
     try {
-      payload = (await request.json()) as ResetPayload;
+      payload = (await request.json()) as Payload;
     } catch {
-      // Body invalid, fall through to validation response below.
+      return NextResponse.json({ error: "Body invalid." }, { status: 400 });
     }
 
-    const resetLinkBase = process.env.RESET_PASSWORD_BASE_URL ?? DEFAULT_RESET_BASE_URL;
+    const token = (payload.token ?? "").trim();
+    const newPassword = payload.newPassword ?? "";
 
-    const email = (payload?.email ?? "").trim().toLowerCase();
-    if (!email) {
-      return NextResponse.json({ error: "Introdu adresa de email." }, { status: 422 });
+    if (!token) {
+      return NextResponse.json({ error: "Link de resetare invalid." }, { status: 422 });
+    }
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 422 });
     }
 
-    const tokenHash = hashResetToken(crypto.randomBytes(32).toString("hex"));
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { username: email }]
+    const resetToken = await prisma.passwordResetToken.findUnique({ where: { token } });
+    if (!resetToken || resetToken.expiresAt < new Date()) {
+      if (resetToken) {
+        await prisma.passwordResetToken.delete({ where: { id: resetToken.id } }).catch(() => {});
       }
-    });
-
-    if (!user) {
-      return NextResponse.json({
-        message: "Dacă există un cont cu acest email, vei primi instrucțiunile pentru resetarea parolei."
-      });
+      return NextResponse.json(
+        { error: "Linkul de resetare este invalid sau a expirat." },
+        { status: 410 }
+      );
     }
 
-    await prisma.passwordResetToken.deleteMany({
-      where: {
-        userId: user.id
-      }
-    });
+    const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    const resetEmail = user.email ?? email;
-
-    const resetRequest = await prisma.passwordResetToken.create({
-      data: {
-        token: tokenHash,
-        email: resetEmail,
-        userId: user.id,
-        expiresAt
-      }
-    });
-
-    let resetUrl = resetLinkBase;
-    try {
-      const url = new URL(resetLinkBase);
-      url.searchParams.set("rid", resetRequest.id);
-      resetUrl = url.toString();
-    } catch {
-      const separator = resetLinkBase.includes("?") ? "&" : "?";
-      resetUrl = `${resetLinkBase}${separator}rid=${encodeURIComponent(resetRequest.id)}`;
-    }
-
-    if (process.env.DISCORD_RESET_WEBHOOK_URL) {
-      try {
-        await fetch(process.env.DISCORD_RESET_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: `Resetare parolă solicitată pentru ${resetEmail}\nExpiră la: ${expiresAt.toISOString()}`
-          }),
-          signal: AbortSignal.timeout(5_000)
-        });
-      } catch (error) {
-        console.error("Nu am putut trimite notificarea pe Discord:", error);
-      }
-    }
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash, tokenVersion: { increment: 1 } }
+      }),
+      prisma.passwordResetToken.deleteMany({ where: { userId: resetToken.userId } })
+    ]);
 
     return NextResponse.json({
-      message: "Dacă există un cont cu acest email, vei primi instrucțiunile pentru resetarea parolei."
+      message: "Parola a fost resetată. Te poți autentifica cu noua parolă."
     });
   } catch (err) {
-    console.error("/api/auth/reset-password error:", err);
-    return NextResponse.json({ error: "Eroare server." }, { status: 500 });
+    console.error("/api/internal/auth/reset-password error:", err);
+    return NextResponse.json({ error: "Eroare server" }, { status: 500 });
   }
 }

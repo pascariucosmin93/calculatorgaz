@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import prisma from "@/lib/prisma";
+import { validateEmail, validatePasswordStrength, validateUsername } from "@/lib/validation";
 
 type Payload = {
   username: string;
@@ -10,9 +11,6 @@ type Payload = {
 };
 
 const sanitize = (value: string) => value.trim();
-const USERNAME_MAX_LENGTH = 32;
-const EMAIL_MAX_LENGTH = 254;
-const PASSWORD_MAX_LENGTH = 128;
 
 export async function POST(request: Request) {
   try {
@@ -27,47 +25,19 @@ export async function POST(request: Request) {
     const email = sanitize((payload.email ?? "").toLowerCase());
     const password = payload.password ?? "";
 
-    if (!username || username.length < 3) {
-      return NextResponse.json(
-        { error: "Numele de utilizator trebuie să aibă cel puțin 3 caractere." },
-        { status: 422 }
-      );
-    }
-    if (username.length > USERNAME_MAX_LENGTH) {
-      return NextResponse.json(
-        { error: `Numele de utilizator poate avea maximum ${USERNAME_MAX_LENGTH} caractere.` },
-        { status: 422 }
-      );
+    const usernameError = validateUsername(username);
+    if (usernameError) {
+      return NextResponse.json({ error: usernameError }, { status: 422 });
     }
 
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      return NextResponse.json({ error: "Introdu o adresă de email validă." }, { status: 422 });
-    }
-    if (email.length > EMAIL_MAX_LENGTH) {
-      return NextResponse.json(
-        { error: `Emailul poate avea maximum ${EMAIL_MAX_LENGTH} caractere.` },
-        { status: 422 }
-      );
+    const emailError = validateEmail(email);
+    if (emailError) {
+      return NextResponse.json({ error: emailError }, { status: 422 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Parola trebuie să aibă cel puțin 8 caractere." },
-        { status: 422 }
-      );
-    }
-    if (password.length > PASSWORD_MAX_LENGTH) {
-      return NextResponse.json(
-        { error: `Parola poate avea maximum ${PASSWORD_MAX_LENGTH} caractere.` },
-        { status: 422 }
-      );
-    }
-
-    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-      return NextResponse.json(
-        { error: "Parola trebuie să conțină cel puțin o literă și o cifră." },
-        { status: 422 }
-      );
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 422 });
     }
 
     const existing = await prisma.user.findFirst({
@@ -99,7 +69,9 @@ export async function POST(request: Request) {
         email: true,
         ownerName: true,
         address: true,
-        createdAt: true
+        meterSerial: true,
+        createdAt: true,
+        tokenVersion: true
       }
     });
 

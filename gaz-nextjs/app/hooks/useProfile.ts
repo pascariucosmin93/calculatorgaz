@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AuthUser } from "@/lib/types";
+import { requestJson } from "@/lib/api-client";
 import { csrfHeaders } from "./useAuth";
 
 export function useProfile(
@@ -41,23 +42,15 @@ export function useProfile(
       setProfileSuccess("");
 
       try {
-        const response = await fetch("/api/auth/profile", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", ...csrfHeaders() },
-          body: JSON.stringify({ ownerName: profileOwnerName, address: profileAddress })
-        });
-
-        let data: Record<string, unknown> | null = null;
-        try {
-          const text = await response.text();
-          if (text) data = JSON.parse(text);
-        } catch {
-          data = null;
-        }
-
-        if (!response.ok) {
-          throw new Error((data?.error as string) || "Nu am putut salva datele.");
-        }
+        const data = await requestJson<Record<string, unknown> | null>(
+          "/api/auth/profile",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", ...csrfHeaders() },
+            body: JSON.stringify({ ownerName: profileOwnerName, address: profileAddress })
+          },
+          "Nu am putut salva datele."
+        );
         if (!data) {
           throw new Error("Răspuns invalid de la server.");
         }

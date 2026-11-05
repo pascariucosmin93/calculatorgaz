@@ -23,9 +23,22 @@ model Reading {
   total            Float
   user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   userId           String?
+  location         Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId       String?
+  isBaseline       Boolean  @default(false)
+  readingType      ReadingType @default(SELF_READING)
+  readingAt        DateTime @default(now())
+  photoKey         String?
   createdAt        DateTime @default(now())
 
-  @@index([userId])
+  @@index([userId, readingAt])
+  @@index([locationId, readingAt])
+}
+
+enum ReadingType {
+  SELF_READING
+  SUPPLIER_ESTIMATE
+  REGULARIZATION
 }
 
 model User {
@@ -34,10 +47,189 @@ model User {
   email        String?  @unique
   ownerName    String?
   address      String?
+  meterSerial  String?
   passwordHash String
+  tokenVersion Int      @default(0)
   createdAt    DateTime @default(now())
   readings     Reading[]
   resetTokens  PasswordResetToken[]
+  invoiceUploads InvoiceUpload[]
+  tariffProfile TariffProfile?
+  tariffHistory TariffHistory[]
+  locations    Location[]
+  notifications AppNotification[]
+  supportConversations SupportConversation[]
+}
+
+// Un loc de consum (adresă + contor + tarife). Datele existente ale fiecărui
+// utilizator sunt migrate într-o locație implicită. locationId rămâne nullable
+// pe Reading/TariffHistory cât timp versiunea stable veche scrie fără el;
+// NULL se tratează ca locația implicită.
+model Location {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  address     String?
+  meterSerial String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readings      Reading[]
+  tariff        LocationTariff?
+  tariffHistory TariffHistory[]
+
+  @@index([userId])
+}
+
+model LocationTariff {
+  id                   String   @id @default(cuid())
+  locationId           String   @unique
+  city                 String
+  pcs                  Float
+  gasPriceMwh          Float
+  transportPriceMwh    Float
+  distributionPriceMwh Float
+  cap26PriceMwh        Float
+  cap6PriceMwh         Float
+  fixedFee             Float
+  vatRate              Float
+  includeVat           Boolean  @default(true)
+  updatedAt            DateTime @updatedAt
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+}
+
+model SupportConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  category  SupportCategory @default(GENERAL)
+  status    SupportStatus @default(OPEN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([status, updatedAt])
+}
+
+model SupportMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderType     SupportSender
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+enum SupportCategory {
+  GENERAL
+  BUG
+  BILLING
+  READING
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum SupportSender {
+  CUSTOMER
+  DEVELOPER
+}
+
+model AppNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  monthKey  String
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, monthKey])
+  @@index([userId, createdAt])
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model TariffProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  city                 String
+  pcs                  Float
+  gasPriceMwh          Float
+  transportPriceMwh    Float
+  distributionPriceMwh Float
+  cap26PriceMwh        Float
+  cap6PriceMwh          Float
+  fixedFee              Float
+  vatRate              Float
+  includeVat           Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TariffHistory {
+  id                   String       @id @default(cuid())
+  userId               String
+  location             Location?    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId           String?
+  city                 String
+  pcs                  Float
+  gasPriceMwh          Float
+  transportPriceMwh    Float
+  distributionPriceMwh Float
+  cap26PriceMwh        Float
+  cap6PriceMwh         Float
+  fixedFee             Float
+  vatRate              Float
+  includeVat           Boolean
+  validFrom            DateTime
+  source               TariffSource @default(MANUAL)
+  createdAt            DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, validFrom])
+  @@index([locationId, validFrom])
+}
+
+enum TariffSource {
+  MANUAL
+  INVOICE
+  MIGRATED
+}
+
+model InvoiceUpload {
+  id        String   @id @default(cuid())
+  userId    String
+  fileHash  String
+  fileName  String
+  objectKey String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fileHash])
+  @@index([userId])
 }
 
 model PasswordResetToken {
@@ -52,4 +244,19 @@ model PasswordResetToken {
 
   @@index([token])
   @@index([userId])
+}
+
+// Operational audit only: it intentionally stores no user identifier, IP,
+// email, username or credential data.
+model LoginEvent {
+  id        String       @id @default(cuid())
+  outcome   LoginOutcome
+  createdAt DateTime     @default(now())
+
+  @@index([outcome, createdAt])
+}
+
+enum LoginOutcome {
+  SUCCESS
+  FAILURE
 }

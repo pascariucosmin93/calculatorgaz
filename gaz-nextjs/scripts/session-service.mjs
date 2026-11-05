@@ -1,9 +1,16 @@
 import crypto from "node:crypto";
 import http from "node:http";
+import { readFileSync } from "node:fs";
 
 const PORT = Number(process.env.PORT || 8088);
 const TOKEN_TTL = Number(process.env.TOKEN_TTL || 86400);
-const JWT_SECRET = process.env.JWT_SECRET || "smoke-secret";
+const JWT_SECRET = process.env.JWT_SECRET_FILE
+  ? readFileSync(process.env.JWT_SECRET_FILE, "utf8").trim()
+  : process.env.JWT_SECRET || "";
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET or JWT_SECRET_FILE must be set");
+}
 
 const toBase64Url = (buf) =>
   buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");

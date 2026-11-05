@@ -1,9 +1,16 @@
 import fs from "node:fs/promises";
+import crypto from "node:crypto";
 
 const BASE_URL = (process.env.SMOKE_BASE_URL || "http://127.0.0.1:3000").replace(/\/+$/, "");
-const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL || "admin@gmail.com";
-const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD || "admin";
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL || "";
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD || "";
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  throw new Error("SMOKE_ADMIN_EMAIL and SMOKE_ADMIN_PASSWORD must be set");
+}
 const REPORT_PATH = process.env.SMOKE_REPORT_PATH || "";
+const SMOKE_USER_PASSWORD = crypto.randomBytes(24).toString("base64url");
+const SMOKE_USER_UPDATED_PASSWORD = crypto.randomBytes(24).toString("base64url");
 
 class CookieJar {
   constructor() {
@@ -220,7 +227,7 @@ try {
         body: JSON.stringify({
           username: "smoke-user",
           email: createdEmail,
-          password: "SmokePass123",
+          password: SMOKE_USER_PASSWORD,
           ownerName: "Smoke User",
           address: "Smoke Street 1"
         })
@@ -242,7 +249,7 @@ try {
       body: JSON.stringify({
         identifier: createdEmail,
         username: createdEmail,
-        password: "SmokePass123"
+        password: SMOKE_USER_PASSWORD
       })
     }, userJar);
 
@@ -262,7 +269,7 @@ try {
         },
         body: JSON.stringify({
           userId: createdUserId,
-          password: "SmokePass456"
+          password: SMOKE_USER_UPDATED_PASSWORD
         })
       },
       adminJar
@@ -281,7 +288,7 @@ try {
       body: JSON.stringify({
         identifier: createdEmail,
         username: createdEmail,
-        password: "SmokePass456"
+        password: SMOKE_USER_UPDATED_PASSWORD
       })
     }, userJar);
 

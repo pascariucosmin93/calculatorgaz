@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
 const AUTH_SERVICE_URL =
   process.env.AUTH_SERVICE_URL?.trim() ??
@@ -9,6 +10,13 @@ const SESSION_SERVICE_URL =
   "http://session-service:8088";
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
+
+// Deliberately no identity or request metadata: the dashboard needs only the
+// aggregate outcome, not personal or security-sensitive data.
+const recordLoginOutcome = (outcome: "SUCCESS" | "FAILURE") =>
+  prisma.loginEvent.create({ data: { outcome } }).catch((error) => {
+    console.error("Could not record login outcome:", error);
+  });
 
 export async function POST(request: Request) {
   try {
@@ -25,6 +33,7 @@ export async function POST(request: Request) {
     const text = await response.text();
 
     if (!response.ok) {
+      await recordLoginOutcome("FAILURE");
       return new NextResponse(text, {
         status: response.status,
         headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" }
@@ -35,6 +44,7 @@ export async function POST(request: Request) {
     try {
       userData = JSON.parse(text);
     } catch {
+      await recordLoginOutcome("FAILURE");
       return new NextResponse(text, {
         status: response.status,
         headers: { "Content-Type": "application/json" }
@@ -51,13 +61,15 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           id: userData.id,
           username: userData.username,
-          email: userData.email
+          email: userData.email,
+          tokenVersion: userData.tokenVersion
         }),
         signal: AbortSignal.timeout(5_000)
       });
 
       if (sessionRes.ok) {
         const { token } = (await sessionRes.json()) as { token: string };
+        await recordLoginOutcome("SUCCESS");
         const res = NextResponse.json(userData, { status: 200 });
         res.cookies.set("gaz-session", token, {
           httpOnly: true,
@@ -72,11 +84,13 @@ export async function POST(request: Request) {
       // Session service unavailable — do NOT return partial success
     }
 
+    await recordLoginOutcome("FAILURE");
     return NextResponse.json(
       { error: "Serviciul de sesiuni este momentan indisponibil. Încearcă din nou." },
       { status: 503 }
     );
   } catch (error) {
+    await recordLoginOutcome("FAILURE");
     return NextResponse.json(
       { error: "Serviciul de autentificare este momentan indisponibil." },
       { status: 502 }

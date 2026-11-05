@@ -32,6 +32,7 @@ export type Result = {
 };
 
 export type HistoryStatus = "idle" | "loading" | "error";
+export type ReadingType = "SELF_READING" | "SUPPLIER_ESTIMATE" | "REGULARIZATION";
 
 export type HistoryEntry = {
   id: string;
@@ -47,11 +48,15 @@ export type HistoryEntry = {
   subtotal: number;
   vat: number;
   total: number;
+  isBaseline: boolean;
+  readingType: ReadingType;
+  readingAt: string;
+  photoKey?: string | null;
   createdAt: string;
 };
 
 export type ThemeMode = "light" | "dark";
-export type AuthMode = "login" | "signup" | "reset";
+export type AuthMode = "login" | "signup";
 
 export type AuthUser = {
   id: string;
@@ -59,6 +64,15 @@ export type AuthUser = {
   email: string | null;
   ownerName: string | null;
   address: string | null;
+  meterSerial: string | null;
   isAdmin: boolean;
   createdAt: string;
+};
+
+export type LocationItem = {
+  id: string;
+  name: string;
+  address: string | null;
+  meterSerial: string | null;
+  isDefault: boolean;
 };

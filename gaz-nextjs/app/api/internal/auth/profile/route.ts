@@ -56,6 +56,14 @@ export async function PATCH(request: Request) {
       }
     });
 
+    // Adresa din profil este cea a locației principale.
+    if (updateData.address !== undefined) {
+      await prisma.location.updateMany({
+        where: { userId, isDefault: true },
+        data: { address: updateData.address }
+      });
+    }
+
     return NextResponse.json(updated, { status: 200 });
   } catch (err) {
     console.error("/api/auth/profile error:", err);

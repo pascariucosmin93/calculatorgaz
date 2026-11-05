@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { WebVitalsReporter } from "./components/WebVitalsReporter";
 
 export const metadata: Metadata = {
   title: "Calculator cost gaz",
@@ -12,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ro" data-theme="light">
-      <body>{children}</body>
+    <html lang="ro" data-theme="dark">
+      <body><WebVitalsReporter />{children}</body>
     </html>
   );
 }

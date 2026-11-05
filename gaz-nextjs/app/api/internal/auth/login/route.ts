@@ -53,7 +53,9 @@ export async function POST(request: Request) {
         email: user.email,
         ownerName: user.ownerName,
         address: user.address,
-        createdAt: user.createdAt
+        meterSerial: user.meterSerial,
+        createdAt: user.createdAt,
+        tokenVersion: user.tokenVersion
       },
       { status: 200 }
     );

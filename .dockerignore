@@ -1,0 +1,7 @@
+# The temporary Gitleaks image must scan the checked-out source, not Git object
+# history. Historic credentials are rotated separately and must not be copied
+# into any Docker build context.
+.git
+
+# Avoid copying local dependency folders into the temporary scanner image.
+**/node_modules

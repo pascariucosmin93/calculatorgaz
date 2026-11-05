@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { isErrorResponse } from "@/lib/auth";
 import { requireAdminSession } from "@/lib/admin-session";
 import prisma from "@/lib/prisma";
+import { validateEmail, validatePasswordStrength, validateUsername } from "@/lib/validation";
 
 type Payload = {
   userId?: string;
@@ -17,9 +18,6 @@ type Payload = {
 const normalize = (value?: string | null) => (value ?? "").trim();
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").toLowerCase();
-const USERNAME_MAX_LENGTH = 32;
-const EMAIL_MAX_LENGTH = 254;
-const PASSWORD_MAX_LENGTH = 128;
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,27 +61,14 @@ export async function PUT(request: NextRequest) {
     const ownerName = normalize(payload.ownerName) || username.toUpperCase();
     const address = normalize(payload.address) || null;
 
-    if (!username || username.length < 3) {
-      return NextResponse.json(
-        { error: "Numele de utilizator trebuie să aibă cel puțin 3 caractere." },
-        { status: 422 }
-      );
-    }
-    if (username.length > USERNAME_MAX_LENGTH) {
-      return NextResponse.json(
-        { error: `Numele de utilizator poate avea maximum ${USERNAME_MAX_LENGTH} caractere.` },
-        { status: 422 }
-      );
+    const usernameError = validateUsername(username);
+    if (usernameError) {
+      return NextResponse.json({ error: usernameError }, { status: 422 });
     }
 
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      return NextResponse.json({ error: "Introdu o adresă de email validă." }, { status: 422 });
-    }
-    if (email.length > EMAIL_MAX_LENGTH) {
-      return NextResponse.json(
-        { error: `Emailul poate avea maximum ${EMAIL_MAX_LENGTH} caractere.` },
-        { status: 422 }
-      );
+    const emailError = validateEmail(email);
+    if (emailError) {
+      return NextResponse.json({ error: emailError }, { status: 422 });
     }
 
     if (email === ADMIN_EMAIL || username === ADMIN_EMAIL) {
@@ -93,24 +78,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Parola trebuie să aibă cel puțin 8 caractere." },
-        { status: 422 }
-      );
-    }
-    if (password.length > PASSWORD_MAX_LENGTH) {
-      return NextResponse.json(
-        { error: `Parola poate avea maximum ${PASSWORD_MAX_LENGTH} caractere.` },
-        { status: 422 }
-      );
-    }
-
-    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-      return NextResponse.json(
-        { error: "Parola trebuie să conțină cel puțin o literă și o cifră." },
-        { status: 422 }
-      );
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 422 });
     }
 
     const existing = await prisma.user.findFirst({
@@ -173,23 +143,9 @@ export async function PATCH(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: "Lipsește utilizatorul." }, { status: 422 });
     }
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Parola trebuie să aibă cel puțin 8 caractere." },
-        { status: 422 }
-      );
-    }
-    if (password.length > PASSWORD_MAX_LENGTH) {
-      return NextResponse.json(
-        { error: `Parola poate avea maximum ${PASSWORD_MAX_LENGTH} caractere.` },
-        { status: 422 }
-      );
-    }
-    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-      return NextResponse.json(
-        { error: "Parola trebuie să conțină cel puțin o literă și o cifră." },
-        { status: 422 }
-      );
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 422 });
     }
 
     const targetUser = await prisma.user.findUnique({
@@ -217,7 +173,7 @@ export async function PATCH(request: NextRequest) {
 
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash }
+      data: { passwordHash, tokenVersion: { increment: 1 } }
     });
 
     return NextResponse.json({ ok: true }, { status: 200 });

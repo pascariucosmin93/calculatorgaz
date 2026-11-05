@@ -1,7 +1,9 @@
 "use client";
 
 import { FormEvent, memo } from "react";
+import Link from "next/link";
 import { AuthMode, AuthUser } from "@/lib/types";
+import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH, USERNAME_MAX_LENGTH } from "@/lib/validation";
 import { styles } from "../styles";
 
 type Props = {
@@ -12,18 +14,11 @@ type Props = {
   authPassword: string;
   authLoading: boolean;
   authError: string;
-  resetEmail: string;
-  resetLoading: boolean;
-  resetError: string;
-  resetMessage: string;
-  resetLink: string;
   onAuthModeChange: (mode: AuthMode) => void;
   onUsernameChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onAuthSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onResetEmailChange: (value: string) => void;
-  onResetPasswordSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onLogout: () => void;
 };
 
@@ -35,18 +30,11 @@ function AuthStatusCardComponent({
   authPassword,
   authLoading,
   authError,
-  resetEmail,
-  resetLoading,
-  resetError,
-  resetMessage,
-  resetLink,
   onAuthModeChange,
   onUsernameChange,
   onEmailChange,
   onPasswordChange,
   onAuthSubmit,
-  onResetEmailChange,
-  onResetPasswordSubmit,
   onLogout
 }: Props) {
   return (
@@ -75,16 +63,6 @@ function AuthStatusCardComponent({
             >
               Creează cont
             </button>
-            <button
-              type="button"
-              style={{
-                ...styles.authTab,
-                ...(authMode === "reset" ? styles.authTabActive : {})
-              }}
-              onClick={() => onAuthModeChange("reset")}
-            >
-              Resetare parolă
-            </button>
           </div>
         )}
       </div>
@@ -102,38 +80,6 @@ function AuthStatusCardComponent({
             Deconectează-te
           </button>
         </div>
-      ) : authMode === "reset" ? (
-        <form style={styles.authForm} onSubmit={onResetPasswordSubmit}>
-          <label style={styles.label}>
-            Email asociat contului
-            <input
-              type="email"
-              autoComplete="email"
-              style={styles.authInput}
-              value={resetEmail}
-              onChange={(event) => onResetEmailChange(event.target.value)}
-              maxLength={254}
-              required
-            />
-          </label>
-          {resetError && <p style={styles.error}>{resetError}</p>}
-          {resetMessage && <p style={styles.success}>{resetMessage}</p>}
-          {resetLink && (
-            <p style={styles.authNotice}>
-              <a href={resetLink} style={{ color: "#d1081f", fontWeight: 600 }} target="_blank" rel="noreferrer">
-                Deschide pagina de resetare
-              </a>
-            </p>
-          )}
-          <button
-            type="submit"
-            className="primary-button"
-            style={styles.authSubmit}
-            disabled={resetLoading}
-          >
-            {resetLoading ? "Se trimite..." : "Trimite link-ul de resetare"}
-          </button>
-        </form>
       ) : (
         <form style={styles.authForm} onSubmit={onAuthSubmit}>
           <label style={styles.label}>
@@ -144,7 +90,7 @@ function AuthStatusCardComponent({
               style={styles.authInput}
               value={authUsername}
               onChange={(event) => onUsernameChange(event.target.value)}
-              maxLength={64}
+              maxLength={USERNAME_MAX_LENGTH}
               required
             />
           </label>
@@ -157,7 +103,7 @@ function AuthStatusCardComponent({
                 style={styles.authInput}
                 value={authEmail}
                 onChange={(event) => onEmailChange(event.target.value)}
-                maxLength={254}
+                maxLength={EMAIL_MAX_LENGTH}
                 required
               />
             </label>
@@ -170,7 +116,7 @@ function AuthStatusCardComponent({
               style={styles.authInput}
               value={authPassword}
               onChange={(event) => onPasswordChange(event.target.value)}
-              maxLength={128}
+              maxLength={PASSWORD_MAX_LENGTH}
               required
             />
           </label>
@@ -182,6 +128,11 @@ function AuthStatusCardComponent({
               ? "Autentificare"
               : "Creează cont"}
           </button>
+          {authMode === "login" && (
+            <Link className="text-link" href="/reset">
+              Ai uitat parola?
+            </Link>
+          )}
         </form>
       )}
     </section>

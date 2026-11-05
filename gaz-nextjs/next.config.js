@@ -5,6 +5,13 @@ const nextConfig = {
     ignoreBuildErrors: false
   },
   output: "standalone",
+  serverExternalPackages: [
+    "@opentelemetry/api",
+    "@opentelemetry/auto-instrumentations-node",
+    "@opentelemetry/exporter-trace-otlp-proto",
+    "@opentelemetry/resources",
+    "@opentelemetry/sdk-node"
+  ],
   async headers() {
     return [
       {

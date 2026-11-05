@@ -1,0 +1,202 @@
+name: Prod
+
+# Release = promovarea imaginilor deja construite și scanate de CI pentru un
+# commit de pe main (gaz:<sha>) la tag-uri de versiune (gaz:X.Y.Z), fără
+# rebuild, apoi actualizarea repo-ului GitOps gaz-gitops (chart Helm). Argo CD
+# sincronizează singur clusterul din gaz-gitops: migrarea rulează ca hook
+# PreSync, apoi rolling update. O versiune existentă se redeployează din commitul ei (rollback).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versiunea de producție (ex. 0.0.1). O versiune existentă = redeploy/rollback."
+        required: true
+        type: string
+
+# O singură lansare o dată: două commit-uri simultane în gaz-gitops s-ar suprapune.
+concurrency:
+  group: gaz-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+    steps:
+      - name: Install Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v3.16.2
+
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate release version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -Eeuo pipefail
+          if ! printf '%s' "${RELEASE_VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Versiunea trebuie să aibă formatul 0.0.1." >&2
+            exit 1
+          fi
+          echo "RELEASE_VERSION=${RELEASE_VERSION}" >> "${GITHUB_ENV}"
+
+      - name: Set image tags
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          IMAGE_NAME="$(printf '%s' "${OWNER}" | tr '[:upper:]' '[:lower:]')/gaz"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> "${GITHUB_ENV}"
+          echo "IMAGE_TAG=${REGISTRY}/${IMAGE_NAME}:${RELEASE_VERSION}" >> "${GITHUB_ENV}"
+          echo "IMAGE_MIGRATOR_TAG=${REGISTRY}/${IMAGE_NAME}:migrator-${RELEASE_VERSION}" >> "${GITHUB_ENV}"
+
+      - name: Login to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve source commit
+        run: |
+          set -Eeuo pipefail
+          if docker manifest inspect "${IMAGE_TAG}" >/dev/null 2>&1; then
+            # Versiune existentă: commitul sursă e cel din eticheta OCI a imaginii.
+            docker pull --quiet "${IMAGE_TAG}" >/dev/null
+            SOURCE_SHA="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${IMAGE_TAG}")"
+            RELEASE_MODE=redeploy
+            echo "Versiunea ${RELEASE_VERSION} există; redeploy din ${SOURCE_SHA}."
+          else
+            if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+              echo "O versiune nouă poate fi lansată doar din main, nu din ${{ github.ref }}." >&2
+              exit 1
+            fi
+            SOURCE_SHA="${{ github.sha }}"
+            RELEASE_MODE=new
+            echo "Versiune nouă ${RELEASE_VERSION} din ${SOURCE_SHA}."
+          fi
+          if [ -z "${SOURCE_SHA}" ] || ! git cat-file -e "${SOURCE_SHA}^{commit}" 2>/dev/null; then
+            echo "Commitul sursă '${SOURCE_SHA}' nu există în repository." >&2
+            exit 1
+          fi
+          echo "SOURCE_SHA=${SOURCE_SHA}" >> "${GITHUB_ENV}"
+          echo "RELEASE_MODE=${RELEASE_MODE}" >> "${GITHUB_ENV}"
+          if ! git show-ref --verify --quiet "refs/tags/v${RELEASE_VERSION}"; then
+            echo "CREATE_GH_RELEASE=true" >> "${GITHUB_ENV}"
+          else
+            echo "CREATE_GH_RELEASE=false" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Promote scanned images
+        run: |
+          set -Eeuo pipefail
+          short_sha="${SOURCE_SHA:0:12}"
+          # Imaginea aplicației la final: existența ei marchează un release complet.
+          for pair in \
+            "migrator-${short_sha} ${IMAGE_MIGRATOR_TAG}" \
+            "${short_sha} ${IMAGE_TAG}"; do
+            source="${REGISTRY}/${IMAGE_NAME}:${pair%% *}"
+            target="${pair#* }"
+            if docker manifest inspect "${target}" >/dev/null 2>&1; then
+              echo "Există deja: ${target}"
+              continue
+            fi
+            if ! docker manifest inspect "${source}" >/dev/null 2>&1; then
+              echo "Lipsește ${source}: CI nu a trecut (sau încă rulează) pentru ${SOURCE_SHA}." >&2
+              exit 1
+            fi
+            docker pull --quiet "${source}" >/dev/null
+            docker tag "${source}" "${target}"
+            docker push --quiet "${target}"
+            echo "Promovat: ${source} -> ${target}"
+          done
+
+      - name: Update gaz-gitops
+        env:
+          GITOPS_TOKEN: ${{ secrets.GAZ_GITOPS_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
+          GITOPS_REPO: ${{ github.repository_owner }}/gaz-gitops
+        run: |
+          set -Eeuo pipefail
+          if [ -z "${GITOPS_TOKEN}" ]; then
+            echo "Lipsește secretul GAZ_GITOPS_TOKEN (PAT GitHub cu drept de scriere pe ${GITOPS_REPO})." >&2
+            exit 1
+          fi
+          auth="Authorization: basic $(printf 'x-access-token:%s' "${GITOPS_TOKEN}" | base64 -w0)"
+          git -c "http.extraheader=${auth}" clone --quiet --depth 1 --branch main "${SERVER_URL}/${GITOPS_REPO}.git" /tmp/gaz-gitops
+
+          CHART=/tmp/gaz-gitops/k8s/chart
+          OWNER_LC="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+
+          # Imaginile aplicației și ale migratorului, doar în blocul calculatorgaz.
+          python3 - "${CHART}/values.yaml" "${OWNER_LC}" "${RELEASE_VERSION}" <<'PY'
+          import re, sys, datetime
+          path, owner, version = sys.argv[1:4]
+          s = open(path).read()
+          def sub(pattern, repl):
+              global s
+              s, n = re.subn(pattern, repl, s, count=1)
+              if n != 1:
+                  sys.exit(f"Nu am găsit în values.yaml: {pattern}")
+          sub(r'(?m)^(    repository: ).*$', rf'\1ghcr.io/{owner}/gaz')
+          sub(r'(?m)^(    tag: ).*$', rf'\1"{version}"')
+          sub(r'(?m)^(  migrator:\n(?:    .*\n)*?    tag: ).*$', rf'\1"migrator-{version}"')
+          now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          sub(r'(?m)^promotedAt: .*$', f'promotedAt: "{now}"')
+          open(path, "w").write(s)
+          PY
+
+          # Scripturile microserviciilor, exact din commitul sursă.
+          for target in "${CHART}"/scripts/*; do
+            name="$(basename "${target}")"
+            if git show "${SOURCE_SHA}:gaz-nextjs/scripts/${name}" > "${target}.new" 2>/dev/null; then
+              mv "${target}.new" "${target}"
+            else
+              rm -f "${target}.new"
+              echo "Atenție: ${name} nu există în ${SOURCE_SHA}; păstrez copia din gaz-gitops." >&2
+            fi
+          done
+
+          helm lint "${CHART}"
+          helm template gaz "${CHART}" >/dev/null
+
+          cd /tmp/gaz-gitops
+          if git diff --quiet; then
+            echo "gaz-gitops este deja la ${RELEASE_VERSION}; nu e nimic de comis."
+            exit 0
+          fi
+          git config user.name "gaz-release"
+          git config user.email "gaz-release@users.noreply.github.com"
+          git add -A
+          git commit --quiet -m "Release gaz ${RELEASE_VERSION}" \
+            -m "Sursa: ${SOURCE_SHA}. Imagini: ${IMAGE_TAG}, ${IMAGE_MIGRATOR_TAG}."
+          for attempt in 1 2 3; do
+            if git -c "http.extraheader=${auth}" push --quiet origin HEAD:main; then
+              echo "gaz-gitops actualizat: ${RELEASE_VERSION}. Argo CD sincronizează clusterul."
+              exit 0
+            fi
+            git -c "http.extraheader=${auth}" pull --quiet --rebase origin main
+          done
+          echo "Nu am putut împinge în gaz-gitops după 3 încercări." >&2
+          exit 1
+
+      - name: Create GitHub release
+        if: env.CREATE_GH_RELEASE == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          if ! gh release create "v${RELEASE_VERSION}" \
+              --repo "${{ github.repository }}" \
+              --target "${SOURCE_SHA}" \
+              --title "v${RELEASE_VERSION}" \
+              --notes "Imagini: ${IMAGE_TAG}, ${IMAGE_MIGRATOR_TAG}"; then
+            echo "::warning::Deploy reușit, dar release-ul v${RELEASE_VERSION} nu a putut fi creat."
+          fi

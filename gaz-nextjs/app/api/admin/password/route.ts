@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isErrorResponse } from "@/lib/auth";
 import { clearAdminSessionCookie, requireAdminSession, verifyAdminPassword } from "@/lib/admin-session";
 import prisma from "@/lib/prisma";
+import { validatePasswordStrength } from "@/lib/validation";
 
 type Payload = {
   currentPassword?: string;
@@ -11,7 +12,6 @@ type Payload = {
 };
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
-const PASSWORD_MAX_LENGTH = 128;
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -34,23 +34,9 @@ export async function PATCH(request: NextRequest) {
     if (!newPassword) {
       return NextResponse.json({ error: "Parola nouă este obligatorie." }, { status: 422 });
     }
-    if (newPassword.length < 8) {
-      return NextResponse.json(
-        { error: "Parola nouă trebuie să aibă cel puțin 8 caractere." },
-        { status: 422 }
-      );
-    }
-    if (newPassword.length > PASSWORD_MAX_LENGTH) {
-      return NextResponse.json(
-        { error: `Parola nouă poate avea maximum ${PASSWORD_MAX_LENGTH} caractere.` },
-        { status: 422 }
-      );
-    }
-    if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      return NextResponse.json(
-        { error: "Parola nouă trebuie să conțină cel puțin o literă și o cifră." },
-        { status: 422 }
-      );
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError.replace("Parola", "Parola nouă") }, { status: 422 });
     }
 
     const currentValid = await verifyAdminPassword(currentPassword);
@@ -62,7 +48,7 @@ export async function PATCH(request: NextRequest) {
 
     await prisma.user.update({
       where: { email: ADMIN_EMAIL },
-      data: { passwordHash }
+      data: { passwordHash, tokenVersion: { increment: 1 } }
     });
 
     const response = NextResponse.json(
