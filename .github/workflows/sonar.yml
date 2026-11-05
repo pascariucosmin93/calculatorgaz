@@ -1,0 +1,46 @@
+name: SonarQube
+
+# Analiză statică în SonarQube (secretul SONAR_HOST_URL). Workflow separat de
+# CI: rezultatul nu blochează publicarea imaginilor. Ediția Community analizează
+# doar branch-ul principal, de aceea rulează doar pe main.
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sonar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube scan
+        # Se sare peste dacă secretele SONAR / SONAR_HOST_URL nu sunt setate.
+        if: env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != ''
+        run: |
+          set -Eeuo pipefail
+          # Sursele se copiază în imagine (docker build trimite contextul din
+          # client); un bind mount ar arăta calea de pe gazdă, nu workspace-ul.
+          docker build --tag gaz-sonar-scan:ci --file - . <<'DOCKERFILE'
+          FROM sonarsource/sonar-scanner-cli:11
+          COPY . /usr/src
+          DOCKERFILE
+          docker run --rm \
+            -e SONAR_TOKEN -e SONAR_HOST_URL \
+            -e SONAR_SCANNER_JAVA_OPTS="-Xmx2g" \
+            gaz-sonar-scan:ci \
+            -Dsonar.projectKey=gaz \
+            -Dsonar.projectName=gaz \
+            -Dsonar.sources=gaz-nextjs \
+            -Dsonar.exclusions="**/node_modules/**,**/.next/**,**/*.tsbuildinfo,**/public/**" \
+            -Dsonar.javascript.node.maxspace=4096 \
+            -Dsonar.scm.revision="${{ github.sha }}"

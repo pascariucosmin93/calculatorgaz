@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  pull_request:
+  # Fără paths-ignore pe main: fiecare commit de pe main trebuie să aibă
+  # imagini publicate, altfel nu poate fi lansat din workflow-ul Prod.
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: gaz-nextjs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: gaz-nextjs
+        run: npm ci --ignore-scripts
+
+      - name: Generate Prisma client
+        working-directory: gaz-nextjs
+        run: |
+          ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
+          grep -q "invoiceUpload" node_modules/.prisma/client/index.d.ts
+          grep -q "tariffProfile" node_modules/.prisma/client/index.d.ts
+
+      - name: Run tests
+        working-directory: gaz-nextjs
+        run: npm run test:all
+
+      - name: TypeScript check
+        working-directory: gaz-nextjs
+        run: npm exec tsc -- --noEmit
+
+      - name: Production build check
+        working-directory: gaz-nextjs
+        run: npm run build
+
+  security:
+    needs: [quality]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      # Publicăm imaginile doar de pe main; workflow-ul Prod le promovează
+      # (fără rebuild) și refuză un commit care nu are imagini publicate.
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: gaz-nextjs/package-lock.json
+
+      - name: Set image tags
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          IMAGE_NAME="$(printf '%s' "${OWNER}" | tr '[:upper:]' '[:lower:]')/gaz"
+          SHORT_SHA="${COMMIT_SHA:0:12}"
+          echo "IMAGE_TAG=${REGISTRY}/${IMAGE_NAME}:${SHORT_SHA}" >> "${GITHUB_ENV}"
+          echo "IMAGE_MIGRATOR_TAG=${REGISTRY}/${IMAGE_NAME}:migrator-${SHORT_SHA}" >> "${GITHUB_ENV}"
+
+      - name: Login to GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan repository for secrets
+        run: |
+          set -Eeuo pipefail
+          docker build --tag gaz-gitleaks-scan:ci --file - . <<'DOCKERFILE'
+          FROM zricethezav/gitleaks:v8.24.2
+          COPY . /repo
+          WORKDIR /repo
+          DOCKERFILE
+          docker run --rm gaz-gitleaks-scan:ci \
+            detect --source=/repo --config=/repo/.gitleaks.toml --no-git --redact
+
+      - name: Install application dependencies
+        working-directory: gaz-nextjs
+        run: npm ci --ignore-scripts
+
+      - name: Audit npm dependencies
+        run: |
+          set -Eeuo pipefail
+          (cd gaz-nextjs && npm audit --omit=dev --audit-level=high)
+
+      - name: Semgrep SAST
+        run: |
+          set -Eeuo pipefail
+          docker run --rm -v "${PWD}:/src" semgrep/semgrep:1.178.0 \
+            semgrep --config=p/security-audit --config=p/owasp-top-ten \
+            --config=p/typescript --error /src
+
+      - name: Scan Dockerfiles
+        run: |
+          set -Eeuo pipefail
+          for dockerfile in gaz-nextjs/Dockerfile; do
+            echo "hadolint ${dockerfile}"
+            docker run --rm -i hadolint/hadolint:v2.15.1 \
+              hadolint --failure-threshold error - < "${dockerfile}"
+          done
+
+      - name: Build images
+        run: |
+          set -Eeuo pipefail
+          labels="--label org.opencontainers.image.source=https://github.com/${{ github.repository }} --label org.opencontainers.image.revision=${{ github.sha }}"
+          docker build --pull ${labels} --tag "${IMAGE_TAG}" ./gaz-nextjs
+          docker build --target migrator ${labels} --tag "${IMAGE_MIGRATOR_TAG}" ./gaz-nextjs
+
+      - name: Scan images
+        run: |
+          set -Eeuo pipefail
+          for image in "${IMAGE_TAG}" "${IMAGE_MIGRATOR_TAG}"; do
+            echo "trivy ${image}"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.74.0 image --timeout 15m --exit-code 1 \
+              --ignore-unfixed --severity HIGH,CRITICAL "${image}"
+          done
+
+      - name: Generate SBOM
+        run: |
+          set -Eeuo pipefail
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            anchore/syft:v1.52.0 "${IMAGE_TAG}" -o cyclonedx-json > sbom-cyclonedx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom-cyclonedx.json
+          if-no-files-found: warn
+          retention-days: 10
+
+      # Ultimul pas: existența imaginii <sha> în registry înseamnă că toate
+      # verificările de mai sus au trecut pentru acel commit.
+      - name: Push scanned images
+        if: env.PUBLISH == 'true'
+        run: |
+          set -Eeuo pipefail
+          docker push "${IMAGE_MIGRATOR_TAG}"
+          docker push "${IMAGE_TAG}"

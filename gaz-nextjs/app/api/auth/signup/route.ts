@@ -51,7 +51,8 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           id: userData.id,
           username: userData.username,
-          email: userData.email
+          email: userData.email,
+          tokenVersion: userData.tokenVersion
         }),
         signal: AbortSignal.timeout(5_000)
       });

@@ -1,0 +1,1 @@
+export function SettingsRow({ icon, title, detail, onClick }: { icon: string; title: string; detail: string; onClick?: () => void }) { return <button className="settings-row" onClick={onClick} type="button"><span className="row-icon">{icon}</span><span><strong>{title}</strong><small>{detail}</small></span><span className="row-arrow">›</span></button>; }

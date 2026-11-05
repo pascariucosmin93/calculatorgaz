@@ -1,8 +1,15 @@
 import http from "node:http";
+import { readFileSync } from "node:fs";
 
 const PORT = Number(process.env.PORT || 8083);
 const APP_BASE_URL = (process.env.APP_BASE_URL || "http://calculatorgaz").replace(/\/+$/, "");
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY_FILE
+  ? readFileSync(process.env.INTERNAL_API_KEY_FILE, "utf8").trim()
+  : process.env.INTERNAL_API_KEY || "";
+
+if (!INTERNAL_API_KEY) {
+  throw new Error("INTERNAL_API_KEY or INTERNAL_API_KEY_FILE must be set");
+}
 
 const readJson = (req) =>
   new Promise((resolve, reject) => {
@@ -67,16 +74,30 @@ const server = http.createServer(async (req, res) => {
       return res.end(upstream.body);
     }
 
-    if (req.method === "POST" && req.url === "/auth/reset-password") {
+    if (req.method === "PATCH" && req.url === "/auth/profile") {
       const payload = await readJson(req);
-      const upstream = await proxyJson("/api/internal/auth/reset-password", "POST", payload);
+      const upstream = await proxyJson("/api/internal/auth/profile", "PATCH", payload);
       res.writeHead(upstream.status, { "Content-Type": upstream.contentType });
       return res.end(upstream.body);
     }
 
-    if (req.method === "POST" && req.url === "/auth/reset-password/confirm") {
+    if (req.method === "POST" && req.url === "/auth/change-password") {
       const payload = await readJson(req);
-      const upstream = await proxyJson("/api/internal/auth/reset-password/confirm", "POST", payload);
+      const upstream = await proxyJson("/api/internal/auth/change-password", "POST", payload);
+      res.writeHead(upstream.status, { "Content-Type": upstream.contentType });
+      return res.end(upstream.body);
+    }
+
+    if (req.method === "POST" && req.url === "/auth/forgot-password") {
+      const payload = await readJson(req);
+      const upstream = await proxyJson("/api/internal/auth/forgot-password", "POST", payload);
+      res.writeHead(upstream.status, { "Content-Type": upstream.contentType });
+      return res.end(upstream.body);
+    }
+
+    if (req.method === "POST" && req.url === "/auth/reset-password") {
+      const payload = await readJson(req);
+      const upstream = await proxyJson("/api/internal/auth/reset-password", "POST", payload);
       res.writeHead(upstream.status, { "Content-Type": upstream.contentType });
       return res.end(upstream.body);
     }

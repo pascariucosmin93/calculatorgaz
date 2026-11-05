@@ -1,0 +1,4 @@
+"use client";
+import Link from "next/link";
+const items = [["Acasă", "/"], ["Consum", "/consum"], ["Autocitire", "/autocitire"], ["Facturi", "/facturi"], ["Suport", "/support"], ["Cont", "/cont"]];
+export function Navbar({ active, username, onThemeToggle, onLogout }: { active: string; username?: string; onThemeToggle: () => void; onLogout?: () => void }) { return <nav className="top-nav"><Link href="/" className="logo"><span>e</span>·on</Link><div className="nav-links">{items.map(([label, href]) => <Link key={href} className={active === href ? "active" : ""} href={href}>{label}</Link>)}</div><div className="nav-actions"><button className="icon-button" onClick={onThemeToggle} aria-label="Schimbă tema">☼</button><Link href="/cont" className="avatar">{(username?.[0] ?? "U").toUpperCase()}</Link>{username && onLogout && <button className="icon-button" onClick={onLogout} aria-label="Deconectează-te" title="Deconectează-te">⏻</button>}</div></nav>; }

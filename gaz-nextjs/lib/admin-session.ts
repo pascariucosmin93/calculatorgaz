@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isErrorResponse, verifySession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-export const ADMIN_SESSION_COOKIE = "gaz-admin-session";
+const ADMIN_SESSION_COOKIE = "gaz-admin-session";
 const ADMIN_SESSION_MAX_AGE_SECONDS = 15 * 60;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
 

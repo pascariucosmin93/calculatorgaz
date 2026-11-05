@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useMemo, useState } from "react";
 import { AuthUser, HistoryEntry, Result } from "@/lib/types";
 import { csrfHeaders } from "./useAuth";
+import { uploadReadingPhoto } from "./useReadingPhoto";
 
 export function useCalculator(
   user: AuthUser | null,
@@ -20,11 +21,16 @@ export function useCalculator(
     includeVat: boolean;
     saveToLocalStorage: (currentReading: number) => void;
   },
-  fetchHistory: () => Promise<void>
+  locationId: string,
+  fetchHistory: () => Promise<void>,
+  photo: File | null,
+  clearPhoto: () => void
 ) {
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
+  const [isInitialReading, setIsInitialReading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [photoError, setPhotoError] = useState("");
 
   const consumptionPreview = useMemo(() => {
     const current = parseFloat(settings.currentReading);
@@ -58,7 +64,9 @@ export function useCalculator(
       }
 
       const current = parseFloat(settings.currentReading);
-      const previous = parseFloat(settings.previousReading);
+      const suppliedPrevious = parseFloat(settings.previousReading);
+      const isInitialReading = Number.isNaN(suppliedPrevious);
+      const previous = isInitialReading ? current : suppliedPrevious;
       const pcsValue = parseFloat(settings.pcs);
       const gasPrice = parseFloat(settings.gasPriceMwh);
       const transportPrice = parseFloat(settings.transportPriceMwh);
@@ -69,7 +77,7 @@ export function useCalculator(
       const fee = parseFloat(settings.fixedFee || "0");
 
       if (
-        [current, previous, pcsValue, gasPrice, transportPrice, distributionPrice, cap26Price, cap6Price, vat, fee].some(
+        [current, pcsValue, gasPrice, transportPrice, distributionPrice, cap26Price, cap6Price, vat, fee].some(
           (v) => Number.isNaN(v)
         )
       ) {
@@ -78,7 +86,7 @@ export function useCalculator(
         return;
       }
 
-      if (current <= previous) {
+      if (!isInitialReading && current <= previous) {
         setError("Citirea actuală trebuie să fie mai mare decât cea anterioară.");
         setResult(null);
         return;
@@ -109,13 +117,16 @@ export function useCalculator(
       }
 
       setError("");
+      setPhotoError("");
+      setIsInitialReading(false);
       setIsSaving(true);
       try {
         const response = await fetch("/api/readings", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...csrfHeaders() },
           body: JSON.stringify({
-            previousReading: previous,
+            locationId,
+            ...(!isInitialReading ? { previousReading: previous } : {}),
             currentReading: current,
             pcs: pcsValue,
             gasPriceMwh: gasPrice,
@@ -133,6 +144,8 @@ export function useCalculator(
         if (!response.ok) {
           throw new Error(data.error || "Nu am putut salva calculul.");
         }
+
+        setIsInitialReading(data.isBaseline === true);
 
         if (
           typeof data.consumptionM3 !== "number" ||
@@ -184,16 +197,24 @@ export function useCalculator(
           breakdown
         });
 
-        fetchHistory().catch((err) => console.warn("History refresh failed:", err));
         settings.saveToLocalStorage(current);
+        if (photo && typeof data.id === "string") {
+          try {
+            await uploadReadingPhoto(data.id, photo);
+          } catch (err) {
+            setPhotoError(`Citirea a fost salvată, dar poza nu s-a încărcat: ${err instanceof Error ? err.message : "eroare necunoscută"}. O poți adăuga din istoric.`);
+          }
+          clearPhoto();
+        }
+        fetchHistory().catch((err) => console.warn("History refresh failed:", err));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Eroare la salvarea calculului.");
       } finally {
         setIsSaving(false);
       }
     },
-    [user, settings, fetchHistory]
+    [user, settings, locationId, fetchHistory, photo, clearPhoto]
   );
 
-  return { error, result, isSaving, consumptionPreview, handleSubmit };
+  return { error, photoError, result, isInitialReading, isSaving, consumptionPreview, handleSubmit };
 }

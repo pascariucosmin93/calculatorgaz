@@ -1,273 +1,141 @@
-# 🔒 Security Scanning Pipeline
+# Security scanning pipeline
 
-Documentație pentru pipeline-ul de security scanning implementat pentru proiectul GAZ Calculator.
+Documentație pentru scanările de securitate rulate în `.github/workflows/ci.yml`.
 
-## 📋 Overview
+## Overview
 
-Pipeline-ul de security include 5 scanuri independente:
+Scanările rulează în job-ul **`security`**, care depinde de succesul job-ului
+`quality` (teste, typecheck, build). Pe `main`, ultimul pas publică imaginile
+`gaz:<sha>`; workflow-ul **Prod** promovează doar imagini care există, deci
+doar commituri care au trecut toate scanările.
 
-1. **NPM Audit** - Verifică vulnerabilități în dependențele Node.js
-2. **Semgrep SAST** - Static Application Security Testing (vulnerabilități în cod)
-3. **Trivy Filesystem** - Scanează fișiere din filesystem (configurări, secreturi, etc.)
-4. **Trivy Docker Image** - Scanează imagini Docker (layers, packages)
-5. **SBOM Generation** - Generează Software Bill of Materials (pentru supply chain security)
-6. **License Check** - Verifică conformitatea licențelor open-source
+**Trigger:** `push` pe `main`, `pull_request`, sau `workflow_dispatch` (aceleași
+condiții ca restul pipeline-ului — nu există filtrare pe cale de fișiere).
 
----
+## Pipeline flow
 
-## 🔄 Workflows & Execution Order
-
-### Pipeline Flow:
 ```
-PUSH TO MAIN
+push / pull_request
     ↓
-security-scan.yml (RUN FIRST - BLOCKING)
-    ├── npm-audit → ❌ BLOCKS if CRITICAL found
-    ├── semgrep-sast → ❌ BLOCKS if CRITICAL found
-    ├── trivy-filesystem → ❌ BLOCKS if CRITICAL found
-    ├── sbom-generation → (always succeeds)
-    ├── license-check → (non-blocking)
-    ├── summary → (report generation)
-    └── check-status → GATE DECISION
-            ↓
-            ✅ ALL PASS → Proceed to build
-            ❌ FAIL → STOP HERE (no build, no push)
-                      ↓
-                    Developer fixes issues
-                      ↓
-                    Retry push
+quality (teste, tsc, build)
     ↓
-kube-build.yml (RUN ONLY IF SECURITY PASSES)
-    ├── NPM Audit pre-build
-    ├── Build Image
-    ├── Trivy Docker Scan
-    ├── Push to Registry
-    └── Update GitOps → ArgoCD Deploy
+security  ← BLOCANT
+    ├── Gitleaks              → oprește la orice secret detectat
+    ├── npm audit              → gaz-nextjs (doar dependențele de producție), HIGH sau CRITICAL
+    ├── Semgrep SAST           → oprește la orice finding
+    ├── Hadolint               → gaz-nextjs/Dockerfile
+    ├── build imagini          → aplicație, migrator
+    ├── Trivy image scan       → ambele, HIGH/CRITICAL (ignoră CVE-uri fără fix)
+    ├── SBOM (Syft, CycloneDX) → aplicație, artifact GitHub
+    └── push imagini <sha>     → doar push pe main
+    ↓
+Prod (manual) → promovează <sha> la X.Y.Z, fără rebuild
 ```
 
-### 1. `security-scan.yml` (Runs on PR & Push to main) - **BLOCKING GATE**
+Versiunile scannerelor sunt fixate în `ci.yml`; actualizarea lor este o
+schimbare explicită, nu o surpriză la următorul build.
 
-**Trigger:**
-- Pull requests către `main`
-- Push-uri către `main` în folderul `gaz-nextjs/`
-- Manual trigger (`workflow_dispatch`)
+## Configurație & threshold-uri
 
-**Jobs:**
-```
-├── npm-audit (Dependencies) → ❌ FAIL on CRITICAL
-├── semgrep-sast (Code analysis) → ❌ FAIL on CRITICAL
-├── trivy-filesystem (File scanning) → ❌ FAIL on CRITICAL
-├── sbom-generation (Syft) → ✅ always succeeds
-├── license-check (Open source) → ✅ non-blocking
-├── summary (Report generation)
-└── check-status (GATE DECISION)
-```
+### Gitleaks
+Scanează tot repo-ul (`--no-git`, config din [`.gitleaks.toml`](.gitleaks.toml)).
+Blochează la orice secret găsit, inclusiv regulile custom pentru variabilele de
+deploy cunoscute.
 
-**Output:**
-- `npm-audit-report/npm-audit.json` - NPM audit rezultate
-- `semgrep-report/semgrep-report.json` - SAST găsiri
-- `trivy-filesystem-report/trivy-filesystem.sarif` - File scan (SARIF format)
-- `sbom-reports/sbom-spdx.json` - SBOM SPDX format
-- `sbom-reports/sbom-cyclonedx.json` - SBOM CycloneDX format
-- `license-report/licenses.json` - License compliance
-
-**Gate Logic:**
-- ❌ BLOCKS build if: NPM CRITICAL, Semgrep CRITICAL, Trivy CRITICAL found
-- ✅ Allows build if: All scans pass
-
-### 2. `kube-build.yml` (Modified - Build & Push) - **RUNS ONLY AFTER SECURITY PASSES**
-
-**Dependencies:**
-- Waits for `security-scan.yml` workflow to complete successfully
-- Only runs if security gate passed
-
-**Proceder:**
-```
-Wait for Security Pass → Checkout → Install → NPM Audit → Build Image → Trivy Scan → Push → Update GitOps
-```
-
----
-
-## 🔧 Configurație & Threshold-uri
-
-### NPM Audit
+### npm audit
 ```bash
-# ❌ BLOCKS on CRITICAL vulnerabilities
-npm audit --json > npm-audit.json
-CRITICAL=$(jq '[.vulnerabilities[] | select(.severity=="critical")] | length' npm-audit.json)
-if [ $CRITICAL -gt 0 ]; then exit 1; fi
+npm audit --audit-level=high
 ```
-**Action:** ❌ **BLOCKS build** dacă găsește CRITICAL
+Blochează la vulnerabilități `high` sau `critical` în dependențele
+`gaz-nextjs`.
 
-### Semgrep
-```
-Rulează cu:
-- p/security-audit (OWASP, common vulnerabilities)
-- p/owasp-top-ten
-- p/typescript (TypeScript-specific rules)
-```
-**Action:** ❌ **BLOCKS build** pe CRITICAL severity issues
-
-### Trivy Filesystem
-```
-- Severity: CRITICAL
-- Exit code: 1 (blocks on CRITICAL)
-- Reports: HIGH + CRITICAL
-- Format: SARIF (integrare GitHub Security)
-```
-**Action:** ❌ **BLOCKS build** dacă găsește CRITICAL
-
-### Trivy Docker Image (in kube-build.yml)
-```
-- Severity: CRITICAL, HIGH
-- Exit code: 0 (non-blocking, informational)
-```
-**Action:** ⚠️ Reports issues dar nu blochează
-
-### License Check
-```
-Licențe permise:
-- MIT
-- Apache-2.0
-- BSD
-- ISC
-- MPL-2.0
-```
-**Action:** ⚠️ Non-blocking (for informational purposes)
-
----
-
-## 📊 Viewing Results
-
-### GitHub UI
-1. **Pull Requests** → "Checks" tab → "Security Scanning" job
-2. **Actions** → Selectează workflow-ul → Downloadează artifacts
-3. **Security** tab (dacă e enabled) → Vulnerability alerts
-
-### Download Reports
+### Semgrep SAST
 ```bash
-# Downloadează toate rapoartele
-gh run download <run-id> -D ./security-reports/
+semgrep --config=p/security-audit --config=p/owasp-top-ten --config=p/typescript --error
 ```
+`--error` face ca orice finding să întoarcă exit code diferit de zero —
+blochează pipeline-ul indiferent de severitate.
 
-### Local Preview
+### Hadolint
+Scanează `gaz-nextjs/Dockerfile`, `--failure-threshold error`.
+
+### Trivy — image scan
 ```bash
-# View npm audit
-jq . < npm-audit-report/npm-audit.json
-
-# View SBOM
-jq . < sbom-reports/sbom-spdx.json
-
-# View Semgrep
-jq '.results' < semgrep-report/semgrep-report.json
+trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL "${image}"
 ```
+Rulează pentru imaginea aplicației și migrator. Imaginile de rulare nu
+conțin npm (scos după instalare), ca vulnerabilitățile dependențelor lui să nu
+blocheze build-ul.
 
----
+### SBOM
+Generat cu Syft, format CycloneDX JSON (`sbom-cyclonedx.json`), urcat ca artifact GitHub (`sbom-${sha}`, retenție 10 zile). Nu se generează și format
+SPDX.
 
-## ⚙️ Advanced Configuration
+## Vizualizarea rezultatelor
 
-### Ignora Specific CVE-uri
-Dacă trebuie să ignori o vulnerabilitate cunoscută:
+Pipeline-ul rulează în **GitHub Actions**:
 
-**Trivy (docker image):**
+1. Repo → tab **Actions** → selectează rularea → jobul `security` → logurile
+   fiecărui pas.
+2. Artifactul SBOM se descarcă din pagina rulării (secțiunea Artifacts).
+
+Nu există raportare SARIF, tab de Security separat sau integrare cu o
+platformă externă de securitate — totul e vizibil doar în logurile job-ului și
+în artifactul SBOM.
+
+## Ignorarea unui CVE cunoscut
+
+**Trivy (image scan):** adaugă `--ignore-unfixed` este deja activ implicit
+pentru pasul blocant; pentru un CVE cu fix disponibil pe care vrei totuși
+să-l ignori temporar, adaugă în workflow:
 ```yaml
-# Adaug în kube-build.yml, în step "Scan image"
 --ignore-cve CVE-XXXX-XXXXX
 ```
 
-**NPM Audit:**
+**npm audit:** pentru a exclude devDependencies din audit:
 ```bash
-npm audit --omit=dev  # Ignore devDependencies
+npm audit --omit=dev --audit-level=high
 ```
 
-### Semgrep Custom Rules
-Dacă vrei custom rulesets:
-```yaml
-# În security-scan.yml
-semgrep --config=p/custom-rules --config=p/security-audit
-```
+## Bune practici
 
-### Failure Threshold
-Pentru a bloca build-ul pe vulnerabilități CRITICAL:
+1. **Actualizări regulate** — `npm outdated` / `npm update` lunar în
+   `gaz-nextjs`.
+2. **Semgrep** — orice finding blochează build-ul; nu există un nivel
+   "acceptat" — findings trebuie rezolvate sau regula ajustată explicit.
+3. **Imagine de bază** — actualizează imaginea `node:22-alpine` periodic
+   pentru a reduce findings Trivy la nivel de OS.
+4. **SBOM** — folosește artifactul CycloneDX pentru audit de supply chain la
+   nevoie; nu e generat sau păstrat automat în afara celor 10 zile de
+   retenție GitHub.
 
-```yaml
-# În kube-build.yml
-- name: Trivy - Fail on CRITICAL
-  run: |
-    # Setează exit-code 1 pentru CRITICAL vulnerabilities
-    trivy image --exit-code 1 --severity CRITICAL $IMAGE_REF
-```
+## Remediere
 
----
-
-## 📝 Best Practices
-
-### 1. Regular Updates
-```bash
-# Updatează dependencies lunar
-npm outdated
-npm update
-```
-
-### 2. Monitor Semgrep Findings
-- Review-ează și fixează HIGH/CRITICAL issues
-- Acceptă LOW/MEDIUM după caz de caz
-
-### 3. License Compliance
-- Nu adaugă dependențe cu licențe GPL/AGPL fără aprobarea arhitectului
-- Yearly review de licențe în dependențe
-
-### 4. SBOM Usage
-- Distribute SBOM cu releases pentru supply chain transparency
-- Monitor SBOMs pentru vulnerabilități NOU descoperite
-
-### 5. Container Security
-- Update Node.js base image lunar
-- Monitor Trivy alerts pentru OS-level vulnerabilities
-
----
-
-## 🚨 Remediation Examples
-
-### NPM High Vulnerability
+### npm audit
 ```bash
 cd gaz-nextjs
-npm audit fix  # Auto-fix dacă available
-npm outdated   # Verific ce package cauzeaza
-npm update package-name  # Update specific package
+npm audit fix
+npm outdated
+npm update <package>
 ```
 
-### Trivy Finding
-```bash
-# Cauta vulnerability pe aquasec.github.io/trivy
-# Implementeaza fix (update base image, patch library, etc)
-```
+### Trivy
+Verifică findingul pe [aquasec.github.io/trivy](https://aquasecurity.github.io/trivy/),
+actualizează imaginea de bază sau pachetul afectat.
 
-### Semgrep Issue
-```bash
-# Review găsire în code
-# Fixeaza siguranța (validate input, use safe API, etc)
-```
+### Semgrep
+Revizuiește findingul în cod, aplică fix-ul (validare input, API sigur etc.).
 
----
+### Hadolint
+Corectează instrucțiunea semnalată din `gaz-nextjs/Dockerfile` conform
+[regulilor Hadolint](https://github.com/hadolint/hadolint#rules).
 
-## 📞 Support
+## Integrare cu livrarea
 
-Pentru probleme:
-1. Check GitHub Actions logs: `Actions` tab → Run details
-2. Downloadează artifact-ul complet pentru detalii
-3. Consulta [Trivy docs](https://aquasecurity.github.io/trivy/)
-4. Consulta [Semgrep docs](https://semgrep.dev/r)
-5. Consulta [Syft docs](https://github.com/anchore/syft)
+1. `security` validează codul și imaginile, apoi (pe `main`) publică
+   `gaz:<sha>` și `gaz:migrator-<sha>`.
+2. Workflow-ul manual **Prod** promovează aceste imagini la `X.Y.Z` și
+   actualizează repo-ul GitOps `gaz-gitops`; Argo CD aplică schimbarea în cluster.
+   Detalii în [README.md](README.md#release-în-producție).
 
----
-
-## 🔄 Integration cu ArgoCD
-
-GitOps workflow-ul va:
-1. Build-ul declanșează security scans
-2. Daca build-ul push-u imagini cu succes
-3. `gaz-gitops` repo se update-aza automat cu noul tag
-4. ArgoCD detectează change și deploy-u noua versiune
-
-**Nu ai nimic de configurat** - everything flows automatically! 🚀
+Secretele necesare sunt documentate în [README.md](README.md).

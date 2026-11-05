@@ -1,245 +1,204 @@
-# CalculatorGaz Platform
+# CalculatorGaz
 
-`CalculatorGaz` is split across two repositories:
+CalculatorGaz este o aplicație web pentru estimarea consumului și costului gazelor naturale. Utilizatorul își salvează citirile contorului, configurează tarifele sau importă o factură PDF, iar aplicația calculează consumul, costul estimat și evoluția în timp.
 
-- `calculatorgaz`
-  application code, CI/CD workflows, and Argo CD application manifests
-- `gaz-gitops`
-  the Helm chart tracked by Argo CD for Kubernetes deployments
+> Rezultatele sunt estimări informative. CalculatorGaz nu procesează plăți, nu emite facturi și nu înlocuiește factura furnizorului.
 
-This README is a technical sketch of the application and infrastructure so it is easy to understand how the platform is assembled.
+## Funcționalități
 
-## High-Level Overview
+- calculează consumul: **m³ → kWh → MWh → cost estimat**;
+- salvează profilul tarifar: PCS, gaz, transport, distribuție, plafonări, taxă fixă și TVA;
+- importă facturi PDF, detectează tarifele și cere confirmarea înainte de aplicare;
+- avertizează când tariful nou diferă neobișnuit de mult de profilul precedent;
+- păstrează istoricul citirilor și permite corectarea sau ștergerea lor timp de 4 zile;
+- compară consumul cu luna precedentă, aceeași lună din anul trecut și media proprie;
+- estimează consumul și costul lunii curente din ultimele perioade de citire;
+- semnalizează consum anormal față de istoricul utilizatorului;
+- permite mai multe locații de consum per utilizator (maxim 10), fiecare cu adresă, serie contor, tarife, istoric tarife, citiri și facturi proprii; selectorul de locație apare când există cel puțin două;
+- oferă autentificare, profil, notificări, suport și exporturi de raport.
 
-The delivery flow is:
+## Arhitectură
 
-1. you push code to `calculatorgaz`
-2. GitHub Actions runs tests, scanning, image builds, and smoke tests
-3. if everything passes, it publishes versioned images to GHCR using `0.0.x`
-4. the workflow updates `gaz-gitops`
-5. Argo CD detects the new commit in `gaz-gitops` and syncs the cluster
+```mermaid
+flowchart LR
+    U[Utilizator\nBrowser] -->|HTTPS| A[CalculatorGaz\nNext.js]
 
-There is also a separate manual `promote` workflow:
+    subgraph K8s[Kubernetes · namespace gaz]
+        A --> AUTH[auth-service]
+        A --> SESSION[session-service]
+        A --> READ[reading-service]
+        A --> BILL[billing-service]
+        A --> REPORT[reporting-service]
+        A --> NOTIFY[notification-service]
+        A --> INVOICE[invoice-service]
+        A --> METRICS[admin-metrics-service]
+        A --> DB[(PostgreSQL extern\nPrisma)]
+    end
 
-- it starts from an already tested version such as `0.0.42`
-- it promotes that image to `1.0.0`, `1.0`, `1`, and `latest`
-- it can optionally update `gaz-gitops` to the promoted version
+    INVOICE --> R2[Cloudflare R2\nPDF facturi]
+    A -->|poze contor| R2
+    METRICS --> OTEL[OpenTelemetry]
+    NOTIFY --> DISCORD[Discord webhook]
+    A -->|resetare parolă| SMTP[Brevo SMTP\nnoreply@cosmin-lab.com]
+```
 
-## Repositories
+Next.js este punctul unic de intrare. Serviciile interne sunt accesibile numai din interiorul clusterului (network policies) și folosesc `INTERNAL_API_KEY`; browserul nu le apelează direct.
 
-### `calculatorgaz`
+Diagrama editabilă este disponibilă și în [docs/architecture.drawio](docs/architecture.drawio); poate fi deschisă în [diagrams.net](https://app.diagrams.net/).
 
-Contains:
+## Cum funcționează
 
-- the main Next.js application in [`gaz-nextjs`](/Users/cosmin.pascariu/calculatorgaz/gaz-nextjs)
-- GitHub Actions workflows in [`.github/workflows`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows)
-- Argo CD manifests in [`argocd`](/Users/cosmin.pascariu/calculatorgaz/argocd)
+### Citiri și calcul
 
-### `gaz-gitops`
+1. Utilizatorul introduce indexul și data citirii.
+2. Sistemul calculează m³, apoi kWh folosind PCS-ul profilului.
+3. Costul este calculat din tarifele în lei/MWh, taxa fixă și TVA.
+4. Citirea este salvată în PostgreSQL; istoricul, comparațiile, previziunea și alertele se actualizează.
+5. În primele 4 zile citirea poate fi corectată sau ștearsă. Perioada următoare se recalculează pentru continuitatea indexului.
 
-Contains:
+```text
+consum_m3  = index_curent − index_anterior
+consum_kWh = consum_m3 × PCS
+consum_MWh = consum_kWh ÷ 1000
+cost_variabil = consum_MWh × (gaz + transport + distribuție + ajustări)
+total = (cost_variabil + taxă_fixă) × (1 + TVA)
+```
 
-- the Helm chart in [`k8s/chart`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart)
-- image configuration, resources, gateway settings, and microservice definitions
+### Import factură PDF
 
-Argo CD should track `gaz-gitops`, not the application repository.
+1. PDF-ul este încărcat în Cloudflare R2 și deduplicat cu hash SHA-256 per utilizator.
+2. Parserul extrage secțiunea de gaze, PCS-ul, tarifele și adresa locului de consum.
+3. Utilizatorul vede valorile detectate și avertismentele de diferență înainte de aplicare.
+4. La refuz, fișierul și înregistrarea de upload sunt eliminate.
 
-## Application Architecture
+Parserul este în [gaz-nextjs/lib/invoices/parser.ts](gaz-nextjs/lib/invoices/parser.ts), cu teste de regresie inclusiv pentru facturi E.ON Duo.
 
-The platform has one main runtime component:
+### Resetarea parolei și emailul
 
-- `calculatorgaz`
-  the primary Next.js application that provides the UI, API routes, and PostgreSQL access through Prisma
+1. Utilizatorul cere resetarea din pagina de login, cu numele de utilizator sau emailul. Răspunsul este mereu același, ca aplicația să nu confirme dacă un cont există.
+2. `auth-service` generează un token aleator, valabil o oră, și îl salvează în baza de date. Un token nou îl înlocuiește pe cel anterior al aceluiași utilizator.
+3. Linkul `/reset?token=…` este trimis:
+   - **pe email** către utilizator, dacă contul are o adresă validă și SMTP-ul este configurat (expeditor `Cosmin Lab <noreply@cosmin-lab.com>`);
+   - **pe Discord** către administrator, prin `notification-service`, pentru toate conturile, inclusiv cele fără email sau cu email fictiv.
+4. Dacă trimiterea emailului eșuează, eroarea apare doar în logul aplicației; răspunsul către utilizator și notificarea Discord nu sunt afectate.
 
-The Helm chart also generates several small support services from `values.yaml`:
+Codul este în [gaz-nextjs/lib/mailer.ts](gaz-nextjs/lib/mailer.ts) (Nodemailer, STARTTLS) și în ruta [forgot-password](gaz-nextjs/app/api/auth/forgot-password/route.ts). Rutele de resetare sunt limitate la 3, respectiv 5 cereri pe 15 minute, per IP.
 
-- `billing-service`
-- `reporting-service`
-- `auth-service`
-- `reading-service`
-- `invoice-service`
-- `password-reset-service`
-- `notification-service`
-- `session-service`
+Emailul este trimis prin Brevo (`smtp-relay.brevo.com:587`). Domeniul `cosmin-lab.com` este autentificat prin înregistrări DNS din Cloudflare (DKIM, DMARC și verificarea domeniului). Planul gratuit permite 300 de emailuri pe zi.
 
-Some of these are fully stateless, while others act as thin proxies toward internal Next.js endpoints.
+| Variabilă | Valoare | Sursă |
+| --- | --- | --- |
+| `SMTP_HOST`, `SMTP_PORT` | `smtp-relay.brevo.com`, `587` | `values.yaml` din `gaz-gitops` |
+| `SMTP_USER` | loginul SMTP Brevo | cheia `smtp_user` din Secretul `gaz-secrets` |
+| `SMTP_PASSWORD` | cheia SMTP | cheia `smtp_key` din Secretul `gaz-secrets` (prin `SMTP_PASSWORD_FILE`) |
+| `MAIL_FROM` | `Cosmin Lab <noreply@cosmin-lab.com>` | `values.yaml` din `gaz-gitops` |
 
-## Request Flow
+Fără aceste variabile, aplicația funcționează normal, dar linkul de resetare ajunge doar pe Discord. Pentru rotația cheii, actualizează `smtp_key` în Secretul `gaz-secrets` și repornește `calculatorgaz`.
 
-At a logical level:
+## Structura repository-ului
 
-1. a user reaches the public hostname
-2. traffic enters the cluster through Cloudflare and the Kubernetes routing layer
-3. the gateway routes the request:
-   - either directly to backend microservices
-   - or to the main `calculatorgaz` application
-4. `calculatorgaz` talks to:
-   - PostgreSQL for persistent data
-   - internal or external services for invoices, notifications, and sessions
+```text
+gaz-nextjs/                 aplicația Next.js, Prisma, teste și servicii proxy
+  app/                      pagini, componente și API routes
+  lib/                      calcul, forecast, parser facturi și validare
+  prisma/                   schema și migrațiile PostgreSQL
+  scripts/                  servicii interne Node.js și smoke checks
+ops/                        scripturi de operare (curățare Docker)
+.github/workflows/           CI, scanări de securitate și deploy
+```
 
-## Kubernetes
+## Rulare locală
 
-The cluster setup includes:
+Cerințe: Node.js 22, PostgreSQL 16+ și npm.
 
-- the `gaz` namespace
-- a Helm chart for the application and support services
-- `LoadBalancer` services for components that must be advertised through BGP
-- Gateway API resources for HTTP routing
-- Argo CD for GitOps delivery
+```bash
+cd gaz-nextjs
+npm ci
+```
 
-The Helm chart in `gaz-gitops` defines:
+Creează `.env`:
 
-- deployments for `calculatorgaz`
-- generated deployments and services for support microservices
-- Gateway and HTTPRoutes
-- network policies
-- backup cronjobs
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/gaz"
+```
 
-Relevant files:
+Aplică schema și pornește aplicația:
 
-- [`values.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/values.yaml)
-- [`templates/calculatorgaz/deployment.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/calculatorgaz/deployment.yaml)
-- [`templates/gateway/gateway.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/gateway/gateway.yaml)
-- [`templates/gateway/httproutes.yaml`](/Users/cosmin.pascariu/gaz-gitops/k8s/chart/templates/gateway/httproutes.yaml)
+```bash
+npx prisma migrate deploy
+npm run dev
+```
 
-## Argo CD
+Aplicația este disponibilă la `http://localhost:3000`.
 
-The Argo CD application manifests are in:
+### Verificări locale
 
-- [`application-calculatorgaz.yaml`](/Users/cosmin.pascariu/calculatorgaz/argocd/application-calculatorgaz.yaml)
-- [`application-calculatorgaz-test.yaml`](/Users/cosmin.pascariu/calculatorgaz/argocd/application-calculatorgaz-test.yaml)
+```bash
+npm run test:all
+npm exec tsc -- --noEmit
+npm run build
+```
 
-Their role is to tell Argo CD:
+## Docker și producție
 
-- which repository to track
-- which path inside the repository to apply
-- which namespace to deploy into
+Imaginea principală este construită din [gaz-nextjs/Dockerfile](gaz-nextjs/Dockerfile). Rulează fără utilizator root și are healthcheck la `GET /api/health`.
 
-In practice, the deployment source of truth is `gaz-gitops`.
+Producția rulează pe Kubernetes (k3s). Manifestele sunt în repo-ul separat **`gaz-gitops`** (chart Helm în `k8s/chart`, livrat cu Argo CD). Migrarea Prisma rulează ca job `PreSync` la fiecare sincronizare; PostgreSQL-ul este extern.
+
+### Secrete
+
+Secretele nu se versionază. Sunt păstrate în Secretul Kubernetes `gaz-secrets` (namespace `gaz`); cheile folosite sunt cele din `calculatorgaz.secretEnv` și `secretFiles` din `gaz-gitops/k8s/chart/values.yaml` (inclusiv `SMTP_USER`, `SMTP_PASSWORD`, `JWT_SECRET`).
+
+Vezi [POSTGRES_REPLICATION.md](POSTGRES_REPLICATION.md) pentru infrastructura PostgreSQL externă și failover.
 
 ## CI/CD
 
-Important workflows:
+| Workflow | Eveniment | Ce rulează |
+| --- | --- | --- |
+| [`ci.yml`](.github/workflows/ci.yml) | Pull request | lint, Vitest, TypeScript, build Next.js, Gitleaks, npm audit, Semgrep, Hadolint, Trivy (imagini) și SBOM |
+| [`ci.yml`](.github/workflows/ci.yml) | Push pe `main` | aceleași verificări, apoi publică imaginile scanate `gaz:<sha>` și `gaz:migrator-<sha>` (fără deploy) |
+| [`release.yml`](.github/workflows/release.yml) | Manual (**Prod**) | promovează imaginile unui commit la o versiune și actualizează `gaz-gitops` |
 
-- [`ghcr-build.yml`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows/ghcr-build.yml)
-  the main push-to-main pipeline
-- [`promote.yml`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows/promote.yml)
-  the manual promotion workflow
-- [`security-scan.yml`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows/security-scan.yml)
-  additional security scanning
-- [`tests-docker.yml`](/Users/cosmin.pascariu/calculatorgaz/.github/workflows/tests-docker.yml)
-  standalone test execution
-
-### Main Pipeline
-
-On every push to `main`, the main workflow performs:
-
-1. unit tests
-2. dependency scanning
-3. Docker image builds
-4. smoke tests
-   it starts `postgres` and `calculatorgaz`
-5. image push to GHCR
-6. `gaz-gitops` update
-
-The automatically published tags are:
-
-- a short `sha` tag for traceability
-- a `0.0.x` tag for automatic deployment
-
-`latest` is no longer used by the automatic pipeline.
-
-### Manual Promotion
-
-The `promote.yml` workflow takes:
-
-- `source_tag`, for example `0.0.42`
-- `release_version`, for example `1.0.0`
-- `update_gitops`, a boolean
-
-It then creates:
-
-- `1.0.0`
-- `1.0`
-- `1`
-- `latest`
-
-This gives you:
-
-- `0.0.x` for automatic delivery
-- `1.x.x` for stable manual releases
-
-## Registry
-
-Images are published to GHCR:
-
-- `ghcr.io/pascariucosmin93/calculatorgaz`
-
-If you want to avoid `imagePullSecret` in the cluster, the simplest option is to keep these GHCR images public.
-
-## Data and External Dependencies
-
-Main external dependencies:
-
-- PostgreSQL
-- SeaweedFS / S3-compatible object storage
-- Discord webhooks
-- Cloudflare for public access
-- Argo CD for GitOps deployment
-
-## Required Secrets
-
-For GitHub Actions in `calculatorgaz`, the repository needs:
-
-- `GITOPS_PUSH_USER`
-- `GITOPS_PUSH_TOKEN`
-
-Inside Kubernetes, the application needs secrets such as:
-
-- `DATABASE_URL`
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
-- `ADMIN_PASSWORD`
-- `INTERNAL_API_KEY`
-- S3 credentials
-- webhook and operational secrets
-
-## Quick Structure
+Secrete GitHub Actions:
 
 ```text
-calculatorgaz/
-├── .github/workflows/
-│   ├── ghcr-build.yml
-│   ├── promote.yml
-│   ├── security-scan.yml
-│   └── tests-docker.yml
-├── argocd/
-│   ├── application-calculatorgaz.yaml
-│   └── application-calculatorgaz-test.yaml
-├── gaz-nextjs/
-│   ├── app/
-│   ├── lib/
-│   ├── prisma/
-│   └── tests/
+GAZ_GITOPS_TOKEN  PAT GitHub cu drept de scriere (Contents) în repo-ul gaz-gitops
+SONAR, SONAR_HOST_URL   opționale: analiza SonarQube se sare dacă lipsesc
+(imaginile se publică în GHCR cu GITHUB_TOKEN; nu e nevoie de secrete de registry)
 ```
 
-```text
-gaz-gitops/
-└── k8s/chart/
-    ├── Chart.yaml
-    ├── values.yaml
-    └── templates/
-        ├── calculatorgaz/
-        ├── gateway/
-        ├── microservices/
-        ├── backup/
-        └── network-policies.yaml
+### Release în producție
+
+Din **Actions**, rulează **Prod** pe `main` cu versiunea în format `X.Y.Z`.
+
+1. Commitul HEAD de pe `main` trebuie să aibă imaginile `gaz:<sha>` publicate de CI; altfel release-ul este refuzat. Imaginile nu se reconstruiesc: exact imaginea scanată primește tag-urile `gaz:X.Y.Z` și `gaz:migrator-X.Y.Z`.
+2. Workflow-ul actualizează în `gaz-gitops` tag-urile imaginilor (`calculatorgaz.image.tag`, `migrator.tag`), copiază scripturile microserviciilor în `k8s/chart/scripts/`, verifică chart-ul cu `helm lint`/`helm template`, apoi comite și împinge.
+3. Argo CD sincronizează clusterul: rulează migrarea Prisma (hook `PreSync`), apoi actualizează aplicația stable cu rolling update.
+4. Workflow-ul creează release-ul GitHub `vX.Y.Z`. O versiune existentă se redeployează din commitul ei (rollback).
+
+## Securitate și date
+
+- parolele sunt stocate hash-uit;
+- tokenul de resetare a parolei este aleator (32 de octeți), valabil o oră, iar linkul se trimite pe email doar către adresa contului;
+- rutele interne cer cheia de serviciu, iar rutele cu mutații sunt protejate CSRF;
+- middleware-ul aplică rate limiting per IP și poate consulta o blocklist DDoS;
+- facturile și pozele de contor sunt izolate per utilizator prin cheie R2 (pozele se servesc doar proprietarului), iar facturile au și hash de deduplicare;
+- logurile de audit pentru login nu păstrează identificatorul utilizatorului, IP-ul, emailul sau credențiale;
+- CI blochează secrete hardcodate și vulnerabilități `HIGH`/`CRITICAL` din imagine sau configurație.
+
+## Observabilitate și operațiuni
+
+Aplicația trimite telemetrie OpenTelemetry către collectorul `otel-collector` din namespace-ul `observability`. Endpointurile de sănătate sunt disponibile pentru aplicație și serviciile interne.
+
+```bash
+kubectl -n gaz get pods
+kubectl -n gaz logs -f deploy/calculatorgaz
 ```
 
-## In Short
 
-- code and CI/CD live in `calculatorgaz`
-- deployment state and runtime configuration live in `gaz-gitops`
-- Argo CD syncs `gaz-gitops`
-- pushing to `main` produces a `0.0.x` deployment version
-- manual promotion produces a stable `1.x.x` release
+## Contribuții
+
+1. Creează un branch cu scop clar.
+2. Adaugă sau actualizează testele relevante.
+3. Rulează verificările locale.
+4. Deschide un pull request; deploy-ul în producție se face numai după merge în `main`.

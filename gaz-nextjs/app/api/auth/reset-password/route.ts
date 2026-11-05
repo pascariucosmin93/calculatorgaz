@@ -1,20 +1,26 @@
 import { NextResponse } from "next/server";
 
-const PASSWORD_RESET_SERVICE_URL =
-  process.env.PASSWORD_RESET_SERVICE_URL?.trim() ??
-  "http://password-reset-service:8086";
+const AUTH_SERVICE_URL =
+  process.env.AUTH_SERVICE_URL?.trim() ??
+  "http://auth-service:8083";
 
 export async function POST(request: Request) {
+  let payload: Record<string, unknown>;
   try {
-    const body = await request.text();
+    payload = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Body invalid." }, { status: 400 });
+  }
+
+  try {
     const response = await fetch(
-      `${PASSWORD_RESET_SERVICE_URL.replace(/\/+$/, "")}/password-reset/request`,
+      `${AUTH_SERVICE_URL.replace(/\/+$/, "")}/auth/reset-password`,
       {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-      signal: AbortSignal.timeout(10_000),
-      cache: "no-store"
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10_000),
+        cache: "no-store"
       }
     );
 
@@ -23,9 +29,9 @@ export async function POST(request: Request) {
       status: response.status,
       headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" }
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: "Serviciul de resetare a parolei este momentan indisponibil." },
+      { error: "Serviciul de autentificare este momentan indisponibil." },
       { status: 502 }
     );
   }

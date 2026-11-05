@@ -25,12 +25,13 @@ function ProfileFormComponent({
   onSubmit
 }: Props) {
   return (
-    <form style={styles.fieldGroup} onSubmit={onSubmit}>
+    <form id="profile-form" style={styles.fieldGroup} onSubmit={onSubmit}>
       <h2 style={styles.sectionTitle}>Date cont</h2>
       <div style={styles.formRow}>
         <label style={styles.label}>
           Titular loc de consum
           <input
+            id="profile-owner-name"
             type="text"
             style={styles.input}
             value={ownerName}
@@ -41,6 +42,7 @@ function ProfileFormComponent({
         <label style={styles.label}>
           Adresă loc de consum
           <input
+            id="profile-address"
             type="text"
             style={styles.input}
             value={address}

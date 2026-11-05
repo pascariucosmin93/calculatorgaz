@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import prisma from "@/lib/prisma";
+
 const SESSION_SERVICE_URL =
   process.env.SESSION_SERVICE_URL?.trim() ??
   "http://session-service:8088";
@@ -30,10 +32,19 @@ export async function GET(request: NextRequest) {
     const email = payload.email ?? null;
     const isAdmin = ADMIN_EMAIL !== "" && email?.toLowerCase() === ADMIN_EMAIL;
 
+    const user = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { ownerName: true, address: true, meterSerial: true, createdAt: true }
+    });
+
     return NextResponse.json({
       id: payload.id,
       username: payload.username,
       email,
+      ownerName: user?.ownerName ?? null,
+      address: user?.address ?? null,
+      meterSerial: user?.meterSerial ?? null,
+      createdAt: user?.createdAt ?? null,
       isAdmin
     });
   } catch {

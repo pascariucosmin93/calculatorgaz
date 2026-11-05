@@ -1,24 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const DEFAULT_RESET_BASE_URL = "https://reset.gaz.cosmin-lab.cloud/";
-const DEFAULT_BLOCKLIST_URL = "http://ddos-agent.ddos-protection.svc.cluster.local:8080/blocklist";
 const DEFAULT_BLOCKLIST_CACHE_MS = 15_000;
 
 type BlocklistApiResponse = {
   items?: string[];
 };
 
-function getResetHost() {
-  const rawBase = process.env.RESET_PASSWORD_BASE_URL ?? DEFAULT_RESET_BASE_URL;
-  try {
-    return new URL(rawBase).host.toLowerCase();
-  } catch {
-    return new URL(DEFAULT_RESET_BASE_URL).host.toLowerCase();
-  }
-}
-
-const RESET_HOST = getResetHost();
-const BLOCKLIST_URL = process.env.DDOS_BLOCKLIST_URL ?? DEFAULT_BLOCKLIST_URL;
+// Neconfigurat implicit (nu există un agent DDoS pe rețea). Setează
+// DDOS_BLOCKLIST_URL explicit când feature-ul devine disponibil — până atunci
+// middleware-ul nu încearcă niciun fetch inutil.
+const BLOCKLIST_URL = process.env.DDOS_BLOCKLIST_URL?.trim() || "";
 const BLOCKLIST_CACHE_MS = parsePositiveInt(
   process.env.DDOS_BLOCKLIST_CACHE_MS,
   DEFAULT_BLOCKLIST_CACHE_MS
@@ -35,9 +26,15 @@ type RateLimitRule = {
 const DEFAULT_RATE_LIMIT_RULES: Record<string, RateLimitRule> = {
   "POST /api/auth/login": { maxRequests: 5, windowMs: 15 * 60_000 },
   "POST /api/auth/signup": { maxRequests: 3, windowMs: 15 * 60_000 },
-  "POST /api/auth/reset-password": { maxRequests: 3, windowMs: 60 * 60_000 },
-  "POST /api/auth/reset-password/confirm": { maxRequests: 3, windowMs: 60 * 60_000 },
-  "POST /api/admin/session": { maxRequests: 3, windowMs: 15 * 60_000 }
+  "POST /api/auth/change-password": { maxRequests: 5, windowMs: 15 * 60_000 },
+  "POST /api/auth/forgot-password": { maxRequests: 3, windowMs: 15 * 60_000 },
+  "POST /api/auth/reset-password": { maxRequests: 5, windowMs: 15 * 60_000 },
+  "POST /api/admin/session": { maxRequests: 3, windowMs: 15 * 60_000 },
+  "POST /api/invoices/upload": { maxRequests: 10, windowMs: 60 * 60_000 },
+  "POST /api/readings": { maxRequests: 60, windowMs: 60 * 60_000 },
+  "PATCH /api/readings": { maxRequests: 30, windowMs: 60 * 60_000 },
+  "PUT /api/tariffs": { maxRequests: 30, windowMs: 60 * 60_000 },
+  "POST /api/locations": { maxRequests: 20, windowMs: 60 * 60_000 }
 };
 
 type RateLimitState = {
@@ -66,7 +63,10 @@ function getClientIp(request: NextRequest): string {
   );
 }
 
-const SKIP_LOG_PATHS = ["/_next/", "/favicon.ico", "/health"];
+// RUM accepts only aggregate performance values. Keep this endpoint out of
+// request logging too, so neither the visitor IP nor user agent is retained
+// alongside an otherwise anonymous metric.
+const SKIP_LOG_PATHS = ["/_next/", "/favicon.ico", "/health", "/api/rum/"];
 
 function logRequest(request: NextRequest): void {
   const pathname = request.nextUrl.pathname;
@@ -92,6 +92,10 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 }
 
 async function refreshBlockedIpCacheIfNeeded(force = false): Promise<void> {
+  if (!BLOCKLIST_URL) {
+    return;
+  }
+
   const now = Date.now();
   if (!force && now < blockedIpCacheExpiresAt) {
     return;
@@ -134,6 +138,13 @@ async function isBlockedIp(ip: string): Promise<boolean> {
   return blockedIpCache.has(ip);
 }
 
+// Rate limiting-ul e in-memory, per proces. Cu mai multe replici (vezi
+// `replicas` din Deployment-ul calculatorgaz), traficul unui atacator se împarte
+// aleator între ele, iar limita reală devine maxRequests * REPLICA_COUNT.
+// Împărțim aici la numărul de replici ca să compensăm, până când limitarea
+// va folosi un store partajat (ex. Redis) la o scală care justifică infra nouă.
+const RATE_LIMIT_REPLICA_COUNT = parsePositiveInt(process.env.RATE_LIMIT_REPLICA_COUNT, 2);
+
 function resolveRule(method: string, pathname: string): RateLimitRule | null {
   const key = `${method} ${pathname}`;
   const baseRule = DEFAULT_RATE_LIMIT_RULES[key];
@@ -145,9 +156,13 @@ function resolveRule(method: string, pathname: string): RateLimitRule | null {
     .replace(/[^A-Z0-9]+/gi, "_")
     .replace(/^_+|_+$/g, "")
     .toUpperCase();
-  const maxRequests = parsePositiveInt(
+  const configuredMaxRequests = parsePositiveInt(
     process.env[`RATE_LIMIT_${envPrefix}_MAX_REQUESTS`],
     baseRule.maxRequests
+  );
+  const maxRequests = Math.max(
+    1,
+    Math.floor(configuredMaxRequests / RATE_LIMIT_REPLICA_COUNT)
   );
   const windowMs = parsePositiveInt(
     process.env[`RATE_LIMIT_${envPrefix}_WINDOW_MS`],
@@ -201,8 +216,15 @@ const CSRF_EXEMPT_PATHS = new Set([
   "/api/auth/signup",
   "/api/auth/logout",
   "/api/auth/csrf",
+  // Neautentificate prin design — nu există sesiune/cookie CSRF disponibil
+  // când userul deschide linkul de resetare într-un tab nou. Protejate prin
+  // rate limiting și, la reset-password, prin secretul tokenului însuși.
+  "/api/auth/forgot-password",
   "/api/auth/reset-password",
-  "/api/auth/reset-password/confirm"
+  // This endpoint has no user-specific effect and accepts only bounded,
+  // allow-listed aggregate Web Vitals. Browser beacons do not carry a CSRF
+  // token, so it is intentionally exempt.
+  "/api/rum/web-vitals"
 ]);
 
 function isCsrfExempt(pathname: string): boolean {
@@ -281,22 +303,7 @@ export async function middleware(request: NextRequest) {
     response.headers.set("X-RateLimit-Reset", String(Math.floor(rateLimitResult.resetAt / 1000)));
   }
 
-  const requestHost = (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
-  const isResetDomain = requestHost === RESET_HOST;
-
-  if (
-    !isResetDomain ||
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico" ||
-    pathname.startsWith("/resetare")
-  ) {
-    return response;
-  }
-
-  const url = request.nextUrl.clone();
-  url.pathname = "/resetare";
-  return NextResponse.rewrite(url);
+  return response;
 }
 
 export const config = {

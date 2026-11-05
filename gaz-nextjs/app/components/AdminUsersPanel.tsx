@@ -42,6 +42,7 @@ type Props = {
   onChangeAdminPassword: () => void;
   onChangeUserPassword: (userId: string) => void;
   onDeleteUser: (userId: string) => void;
+  onAdminLogout: () => void;
 };
 
 function AdminUsersPanelComponent({
@@ -73,7 +74,8 @@ function AdminUsersPanelComponent({
   onCreateUser,
   onChangeAdminPassword,
   onChangeUserPassword,
-  onDeleteUser
+  onDeleteUser,
+  onAdminLogout
 }: Props) {
   return (
     <section style={styles.fieldGroup}>
@@ -84,6 +86,11 @@ function AdminUsersPanelComponent({
           ? "Sesiunea admin este activă."
           : "Introdu parola de admin pentru a deschide sesiunea."}
       </p>
+      {isAuthenticated && (
+        <button type="button" style={styles.authLogout} onClick={onAdminLogout} disabled={loading}>
+          Deconectează-te și revino la login
+        </button>
+      )}
       <div style={styles.formRow}>
         <label style={styles.label}>
           Parolă admin
@@ -92,6 +99,12 @@ function AdminUsersPanelComponent({
             style={styles.input}
             value={adminPassword}
             onChange={(event) => onAdminPasswordChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !loading && !isAuthenticated) {
+                event.preventDefault();
+                onLoadUsers();
+              }
+            }}
             placeholder="admin"
             disabled={loading || isAuthenticated}
           />

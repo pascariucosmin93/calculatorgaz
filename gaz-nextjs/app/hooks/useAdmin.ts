@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AuthUser } from "@/lib/types";
+import { requestJson } from "@/lib/api-client";
 import { AdminUser } from "../components/AdminUsersPanel";
 import { getCsrfHeaders } from "./useAuth";
 
@@ -55,49 +56,25 @@ export function useAdmin(user: AuthUser | null) {
           return;
         }
 
-        const authResponse = await fetch("/api/admin/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
-          body: JSON.stringify({ password: adminAuthPassword })
-        });
-
-        let authData: Record<string, unknown> | null = null;
-        try {
-          const authText = await authResponse.text();
-          if (authText) authData = JSON.parse(authText);
-        } catch {
-          authData = null;
-        }
-
-        if (!authResponse.ok) {
-          throw new Error(
-            (authData?.error as string) || "Nu am putut valida sesiunea de admin."
-          );
-        }
+        await requestJson(
+          "/api/admin/session",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
+            body: JSON.stringify({ password: adminAuthPassword })
+          },
+          "Nu am putut valida sesiunea de admin."
+        );
 
         setAdminSessionActive(true);
         setAdminAuthPassword("");
       }
 
-      const response = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { ...(await getCsrfHeaders()) }
-      });
-
-      let data: Record<string, unknown>[] | null = null;
-      try {
-        const text = await response.text();
-        if (text) data = JSON.parse(text);
-      } catch {
-        data = null;
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          ((data as unknown as Record<string, string>)?.error) ||
-            "Nu am putut încărca lista de conturi."
-        );
-      }
+      const data = await requestJson<Record<string, unknown>[]>(
+        "/api/admin/users",
+        { method: "POST", headers: { ...(await getCsrfHeaders()) } },
+        "Nu am putut încărca lista de conturi."
+      );
 
       if (!Array.isArray(data)) {
         throw new Error("Răspuns invalid de la server.");
@@ -128,23 +105,15 @@ export function useAdmin(user: AuthUser | null) {
       setAdminError("");
       setAdminSuccess("");
       try {
-        const response = await fetch("/api/admin/users", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
-          body: JSON.stringify({ userId })
-        });
-
-        let data: Record<string, unknown> | null = null;
-        try {
-          const text = await response.text();
-          if (text) data = JSON.parse(text);
-        } catch {
-          data = null;
-        }
-
-        if (!response.ok) {
-          throw new Error((data?.error as string) || "Nu am putut șterge contul.");
-        }
+        await requestJson(
+          "/api/admin/users",
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
+            body: JSON.stringify({ userId })
+          },
+          "Nu am putut șterge contul."
+        );
 
         setAdminUsers((prev) => prev.filter((item) => item.id !== userId));
         setUserPasswordDrafts((prev) => {
@@ -174,32 +143,23 @@ export function useAdmin(user: AuthUser | null) {
     setAdminError("");
     setAdminSuccess("");
     try {
-      const response = await fetch("/api/admin/users", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
-        body: JSON.stringify({
-          username: newUsername,
-          email: newEmail,
-          password: newPassword,
-          ownerName: newOwnerName,
-          address: newAddress
-        })
-      });
+      const data = await requestJson<AdminUser>(
+        "/api/admin/users",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
+          body: JSON.stringify({
+            username: newUsername,
+            email: newEmail,
+            password: newPassword,
+            ownerName: newOwnerName,
+            address: newAddress
+          })
+        },
+        "Nu am putut crea contul."
+      );
 
-      let data: Record<string, unknown> | null = null;
-      try {
-        const text = await response.text();
-        if (text) data = JSON.parse(text);
-      } catch {
-        data = null;
-      }
-
-      if (!response.ok) {
-        throw new Error((data?.error as string) || "Nu am putut crea contul.");
-      }
-
-      const createdUser = data as unknown as AdminUser;
-      setAdminUsers((prev) => [createdUser, ...prev]);
+      setAdminUsers((prev) => [data, ...prev]);
       setNewUsername("");
       setNewEmail("");
       setNewPassword("");
@@ -225,26 +185,18 @@ export function useAdmin(user: AuthUser | null) {
     setAdminError("");
     setAdminSuccess("");
     try {
-      const response = await fetch("/api/admin/password", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
-        body: JSON.stringify({
-          currentPassword: currentAdminPassword,
-          newPassword: nextAdminPassword
-        })
-      });
-
-      let data: Record<string, unknown> | null = null;
-      try {
-        const text = await response.text();
-        if (text) data = JSON.parse(text);
-      } catch {
-        data = null;
-      }
-
-      if (!response.ok) {
-        throw new Error((data?.error as string) || "Nu am putut schimba parola de admin.");
-      }
+      const data = await requestJson<Record<string, unknown>>(
+        "/api/admin/password",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
+          body: JSON.stringify({
+            currentPassword: currentAdminPassword,
+            newPassword: nextAdminPassword
+          })
+        },
+        "Nu am putut schimba parola de admin."
+      );
 
       setCurrentAdminPassword("");
       setNextAdminPassword("");
@@ -267,6 +219,18 @@ export function useAdmin(user: AuthUser | null) {
     setUserPasswordDrafts((prev) => ({ ...prev, [userId]: value }));
   }, []);
 
+  const handleAdminLogout = useCallback(async () => {
+    try {
+      await fetch("/api/admin/session", { method: "DELETE" });
+    } finally {
+      setAdminSessionActive(false);
+      setAdminUsers([]);
+      setAdminAuthPassword("");
+      setAdminError("");
+      setAdminSuccess("Sesiunea admin a fost închisă.");
+    }
+  }, []);
+
   const handleUserPasswordChange = useCallback(
     async (userId: string) => {
       if (!adminSessionActive) {
@@ -280,23 +244,15 @@ export function useAdmin(user: AuthUser | null) {
       setAdminError("");
       setAdminSuccess("");
       try {
-        const response = await fetch("/api/admin/users", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
-          body: JSON.stringify({ userId, password })
-        });
-
-        let data: Record<string, unknown> | null = null;
-        try {
-          const text = await response.text();
-          if (text) data = JSON.parse(text);
-        } catch {
-          data = null;
-        }
-
-        if (!response.ok) {
-          throw new Error((data?.error as string) || "Nu am putut schimba parola contului.");
-        }
+        await requestJson(
+          "/api/admin/users",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", ...(await getCsrfHeaders()) },
+            body: JSON.stringify({ userId, password })
+          },
+          "Nu am putut schimba parola contului."
+        );
 
         setUserPasswordDrafts((prev) => ({ ...prev, [userId]: "" }));
         setAdminSuccess("Parola contului a fost schimbată.");
@@ -340,6 +296,7 @@ export function useAdmin(user: AuthUser | null) {
     handleAdminDelete,
     handleAdminCreate,
     handleAdminPasswordChange,
+    handleAdminLogout,
     handleUserPasswordChange
   };
 }
